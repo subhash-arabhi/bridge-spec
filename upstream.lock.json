@@ -1,0 +1,11 @@
+{
+  "checked": "2026-11-12",
+  "upstreams": {
+    "openspec":    { "repo": "Fission-AI/OpenSpec", "version": "v2.0.0", "sha": "d12c2817776779e06891d68230773b3bb673b106", "npm": "@fission-ai/openspec", "use": "cli-dependency" },
+    "superpowers": { "repo": "obra/superpowers", "version": "v7.0.2", "sha": "22f0b463e7a5e579904dd6211a520321035526f7", "license": "MIT", "use": "vendored-trimmed",
+                     "vendored_from": ["skills/brainstorming/SKILL.md","skills/writing-plans/SKILL.md","skills/test-driven-development/SKILL.md","skills/subagent-driven-development/SKILL.md","skills/subagent-driven-development/implementer-prompt.md","skills/subagent-driven-development/task-reviewer-prompt.md","skills/subagent-driven-development/re-review-prompt.md","skills/subagent-driven-development/references/fix-loop.md","skills/subagent-driven-development/references/final-review.md","skills/subagent-driven-development/scripts/task-brief","skills/subagent-driven-development/scripts/review-package","skills/systematic-debugging/SKILL.md","skills/verification-before-completion/SKILL.md","skills/using-git-worktrees/SKILL.md","skills/finishing-a-development-branch/SKILL.md"] },
+    "egm":         { "repo": "google/elephant-goldfish-model", "version": "v0.1.1", "sha": "0997679a1cc3cfe09206160a85f9379f47101053", "license": "Apache-2.0", "use": "vendored-trimmed",
+                     "vendored_from": ["skills/egm-brainstorm/SKILL.md","skills/egm-draft/SKILL.md","skills/egm-draft/references/design_doc.md","skills/egm-review/SKILL.md","skills/egm-review-loop/SKILL.md","skills/egm-resolve/SKILL.md",".claude-plugin/agents/"] },
+    "comet":       { "repo": "rpamis/comet", "sha": "356114427f28e2fa5bcb9e0242d2c75347693523", "use": "ideas-only (no code copied)" }
+  }
+}

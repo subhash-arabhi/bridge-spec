@@ -1,0 +1,18 @@
+schema: spec-driven
+
+# Written by the bridge skill on first T2 change in a repo. Edit freely.
+context: |
+  Changes are run by the bridge workflow: OpenSpec owns WHAT (proposal + delta specs),
+  design.md holds the approved technical design, tasks.md is the implementation plan
+  and the only completion record. Tests are written before implementation (strict TDD).
+
+rules:
+  proposal:
+    - State what is out of scope.
+  specs:
+    - Every requirement uses SHALL or MUST and has at least one "#### Scenario:" with WHEN/THEN bullets.
+    - MODIFIED requirements contain the full new requirement text.
+  tasks:
+    - Each task is "- [ ] <group>.<n> <title>" followed by indented "Files:", "Test:", "Steps:", "Size: mechanical|standard|complex" lines.
+    - Each task takes 2-5 minutes and ends with a commit.
+    - Every scenario in the delta specs is covered by at least one task's Test line.

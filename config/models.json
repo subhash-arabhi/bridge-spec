@@ -1,0 +1,12 @@
+{
+  "_note": "Role -> model per tool. Claude accepts aliases (haiku|sonnet|opus|fable|inherit) or full ids. Cursor accepts 'inherit' or a Cursor model id (optionally with [effort=..]). Cursor ids below follow Cursor's naming pattern but are NOT documented for haiku/sonnet: confirm in Cursor's model picker and edit here, then run `bridge install`.",
+  "roles": {
+    "explorer":       { "claude": "haiku",  "cursor": "claude-haiku-5-5" },
+    "mechanic":       { "claude": "haiku",  "cursor": "claude-haiku-5-5" },
+    "implementer":    { "claude": "sonnet", "cursor": "claude-sonnet-5-5" },
+    "reviewer":       { "claude": "sonnet", "cursor": "claude-sonnet-5-5" },
+    "final_reviewer": { "claude": "opus",   "cursor": "claude-opus-5-5[effort=high]" },
+    "goldfish":       { "claude": "opus",   "cursor": "claude-opus-5-5" }
+  },
+  "escalation": { "claude": "opus", "cursor": "claude-opus-5-5[effort=high]" }
+}

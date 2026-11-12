@@ -274,20 +274,45 @@ const MARK_BEGIN = '<!-- bridge:begin (managed by `bridge install`) -->';
 const MARK_END = '<!-- bridge:end -->';
 const AGENT_TARGETS = { claude: () => path.join(HOME, '.claude', 'agents'), cursor: () => path.join(HOME, '.cursor', 'agents') };
 
-export function renderAgents(repo = REPO_DIR) {
-  const models = JSON.parse(fs.readFileSync(path.join(repo, 'config', 'models.json'), 'utf8')).roles;
+const modelsPath = (repo = REPO_DIR) => path.join(repo, 'config', 'models.json');
+export const CURSOR_PROFILES = ['anthropic', 'openai', 'mixed'];
+// A role's model for a tool; a tool entry may be a plain id or a { profile: id } map (Cursor).
+export function pickModel(entry, profile) {
+  if (typeof entry === 'string') return entry;
+  return entry?.[profile] ?? null;
+}
+export function renderAgents(repo = REPO_DIR, cursorProfile) {
+  const cfg = JSON.parse(fs.readFileSync(modelsPath(repo), 'utf8'));
+  const models = cfg.roles;
+  const profile = cursorProfile || cfg.cursor_profile || 'anthropic';
+  if (!CURSOR_PROFILES.includes(profile)) die(`unknown cursor profile ${profile} (${CURSOR_PROFILES.join('|')})`, 2);
   const tdir = path.join(repo, 'agents', 'templates');
-  const res = { claude: {}, cursor: {} };
+  const res = { claude: {}, cursor: {}, cursorProfile: profile };
   for (const f of fs.readdirSync(tdir).filter((x) => x.endsWith('.md'))) {
     const src = fs.readFileSync(path.join(tdir, f), 'utf8');
     for (const tool of ['claude', 'cursor']) {
       res[tool][f] = src.replace(/\{\{model:([a-z_]+)\}\}/g, (_, role) => {
-        if (!models[role]?.[tool]) die(`config/models.json lacks roles.${role}.${tool} (used by ${f})`);
-        return models[role][tool];
+        const m = pickModel(models[role]?.[tool], profile);
+        if (!m) die(`config/models.json lacks roles.${role}.${tool}${tool === 'cursor' ? `.${profile}` : ''} (used by ${f})`);
+        return m;
       });
     }
   }
   return res;
+}
+function cmdCursorProfile([profile]) {
+  const p = modelsPath();
+  const cfg = JSON.parse(fs.readFileSync(p, 'utf8'));
+  if (!profile) { out({ cursor_profile: cfg.cursor_profile || 'anthropic', available: CURSOR_PROFILES }); return; }
+  if (!CURSOR_PROFILES.includes(profile)) die(`unknown cursor profile ${profile} (${CURSOR_PROFILES.join('|')})`, 2);
+  cfg.cursor_profile = profile;
+  fs.writeFileSync(p, JSON.stringify(cfg, null, 2) + '\n');
+  const r = renderAgents();
+  const d = AGENT_TARGETS.cursor();
+  fs.mkdirSync(d, { recursive: true });
+  for (const [f, txt] of Object.entries(r.cursor)) fs.writeFileSync(path.join(d, f), txt);
+  const roles = Object.fromEntries(Object.entries(cfg.roles).map(([k, v]) => [k, pickModel(v.cursor, profile)]));
+  out({ cursor_profile: profile, agents: d, roles, escalation: pickModel(cfg.escalation?.cursor, profile) });
 }
 function cmdBuild() {
   const r = renderAgents();
@@ -329,7 +354,7 @@ function cmdInstall(args) {
     const d = AGENT_TARGETS[tool]();
     fs.mkdirSync(d, { recursive: true });
     for (const [f, txt] of Object.entries(r[tool])) fs.writeFileSync(path.join(d, f), txt);
-    report[`agents_${tool}`] = `${Object.keys(r[tool]).length} → ${d}`;
+    report[`agents_${tool}`] = `${Object.keys(r[tool]).length} → ${d}${tool === "cursor" ? ` (profile: ${r.cursorProfile})` : ""}`;
   }
   fs.chmodSync(SELF, 0o755);
   report.cli = link(SELF, path.join(HOME, '.local', 'bin', 'bridge'), force);
@@ -361,7 +386,7 @@ function cmdDoctor() {
   }
   const cm = path.join(HOME, '.claude', 'CLAUDE.md');
   add('~/.claude/CLAUDE.md rubric block', fs.existsSync(cm) && fs.readFileSync(cm, 'utf8').includes(MARK_BEGIN));
-  add('Cursor model ids verified', false, 'manual: confirm config/models.json cursor ids exist in Cursor model picker (Cursor may silently substitute)');
+  add(`Cursor model ids verified (profile: ${r.cursorProfile})`, false, 'manual: confirm the ids in config/models.json exist in Cursor model picker (Cursor may silently substitute)');
   out(checks.map((c) => `${c.ok ? 'ok  ' : 'FAIL'} ${c.name}${c.detail ? ` — ${c.detail}` : ''}`).join('\n'));
   process.exit(checks.slice(0, -1).every((c) => c.ok) ? 0 : 1);
 }
@@ -459,6 +484,7 @@ const HELP = `bridge <command>
   guard <open|plan|verify> <id>   scripted phase gate (exit 0 = advance)
   tasks <id>                      list tasks with status/size
   upstream-check                  compare upstream.lock.json with GitHub (monthly sync)
+  cursor-profile [anthropic|openai|mixed]  show/switch Cursor agent models
   build | install [--force] | doctor`;
 
 const isMain = process.argv[1] && fs.realpathSync(process.argv[1]) === SELF;
@@ -479,6 +505,7 @@ if (isMain) {
     case 'build': cmdBuild(); break;
     case 'install': cmdInstall(args); break;
     case 'doctor': cmdDoctor(); break;
+    case 'cursor-profile': cmdCursorProfile(args); break;
     case 'upstream-check': cmdUpstreamCheck().catch((e) => die(e.message)); break;
     default: out(HELP); process.exit(cmd ? 2 : 0);
   }

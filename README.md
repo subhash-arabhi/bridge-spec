@@ -6,7 +6,15 @@ One global skill for **Claude Code and Cursor** that applies engineering discipl
 - **Superpowers** methods (vendored, trimmed) decide **HOW**: bounded brainstorming, strict TDD, isolated implementer and reviewer subagents.
 - **Elephant-Goldfish** (vendored, trimmed) handles **very large design**: a long-context elephant designs, and fresh-context goldfish review.
 - **Tiers** keep small work cheap: T0 trivial · T1 small (TDD-lite) · T2 requirement (full pipeline) · T3 epic (EGM, then N T2 changes). `bridge route` decides from a slot frame.
-- **Per-role models** via subagents: haiku for recon and mechanical tasks, sonnet for implementing and per-task review, opus for final review and goldfish. Edit them in `config/models.json`.
+- **Per-role models** via subagents, applied whatever model the session runs on. Edit them in `config/models.json`.
+
+  | Tier | Claude Code | Cursor `anthropic` | Cursor `openai` |
+  |---|---|---|---|
+  | Recon, mechanical tasks | haiku | claude-haiku-5-5 | gpt-5.6-luna |
+  | Implementing, per-task review | sonnet | claude-sonnet-5-5 | gpt-5.6-terra |
+  | Final review, goldfish, escalation | opus | claude-opus-5-5 | gpt-5.6-sol |
+
+  Cursor also has a `mixed` profile, where Claude implements and GPT reviews. Switch with `bridge cursor-profile <anthropic|openai|mixed>`.
 
 ## Install / update
 ```bash

@@ -133,3 +133,19 @@ test('state keys: dotted task ids nest as one id', async () => {
   setDeep(s, 'task.1.1', 'done'); setDeep(s, 'task.1.1.base', 'abc'); setDeep(s, 'task.2.1.round', 2); setDeep(s, 'base', 'x');
   assert.deepEqual(s, { task: { '1.1': { status: 'done', base: 'abc' }, '2.1': { round: 2 } }, base: 'x' });
 });
+
+test('cursor profiles: every role resolves for anthropic, openai and mixed', async () => {
+  const { CURSOR_PROFILES } = await import('../skills/bridge/bin/bridge.mjs');
+  for (const p of CURSOR_PROFILES) {
+    const r = renderAgents(ROOT, p);
+    assert.equal(r.cursorProfile, p);
+    for (const [f, txt] of Object.entries(r.cursor)) assert.match(txt, /^model: \S+$/m, `${p}/${f}`);
+  }
+  const oa = renderAgents(ROOT, 'openai').cursor;
+  assert.match(oa['bridge-mechanic.md'], /^model: gpt-5\.6-luna$/m);
+  assert.match(oa['bridge-final-reviewer.md'], /^model: gpt-5\.6-sol$/m);
+  const mx = renderAgents(ROOT, 'mixed').cursor;
+  assert.match(mx['bridge-implementer.md'], /^model: claude-/m, 'mixed: Claude implements');
+  assert.match(mx['bridge-reviewer.md'], /^model: gpt-/m, 'mixed: GPT reviews');
+  assert.match(renderAgents(ROOT, 'openai').claude['bridge-reviewer.md'], /^model: sonnet$/m, 'Claude Code agents unaffected by cursor profile');
+});

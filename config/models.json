@@ -1,12 +1,19 @@
 {
-  "_note": "Role -> model per tool. Claude accepts aliases (haiku|sonnet|opus|fable|inherit) or full ids. Cursor accepts 'inherit' or a Cursor model id (optionally with [effort=..]). Cursor ids below follow Cursor's naming pattern but are NOT documented for haiku/sonnet: confirm in Cursor's model picker and edit here, then run `bridge install`.",
+  "_note": [
+    "Role -> model. Subagent frontmatter models apply whatever model the main session runs on.",
+    "claude: Claude Code aliases (haiku|sonnet|opus|fable|inherit) or full ids. Claude Code cannot run OpenAI models.",
+    "cursor: one id per profile. Switch with `bridge cursor-profile <anthropic|openai|mixed>` (rewrites ~/.cursor/agents).",
+    "  anthropic = Claude models; openai = GPT-5.6 family; mixed = Claude implements, GPT reviews (cross-family review).",
+    "Cursor ids are not all documented: gpt-5.6-sol is; gpt-5.6-luna/terra and claude-haiku/sonnet-5-5 follow Cursor's naming. Confirm in Cursor's model picker."
+  ],
+  "cursor_profile": "anthropic",
   "roles": {
-    "explorer":       { "claude": "haiku",  "cursor": "claude-haiku-5-5" },
-    "mechanic":       { "claude": "haiku",  "cursor": "claude-haiku-5-5" },
-    "implementer":    { "claude": "sonnet", "cursor": "claude-sonnet-5-5" },
-    "reviewer":       { "claude": "sonnet", "cursor": "claude-sonnet-5-5" },
-    "final_reviewer": { "claude": "opus",   "cursor": "claude-opus-5-5[effort=high]" },
-    "goldfish":       { "claude": "opus",   "cursor": "claude-opus-5-5" }
+    "explorer":       { "claude": "haiku",  "cursor": { "anthropic": "claude-haiku-5-5",             "openai": "gpt-5.6-luna",  "mixed": "claude-haiku-5-5" } },
+    "mechanic":       { "claude": "haiku",  "cursor": { "anthropic": "claude-haiku-5-5",             "openai": "gpt-5.6-luna",  "mixed": "claude-haiku-5-5" } },
+    "implementer":    { "claude": "sonnet", "cursor": { "anthropic": "claude-sonnet-5-5",            "openai": "gpt-5.6-terra", "mixed": "claude-sonnet-5-5" } },
+    "reviewer":       { "claude": "sonnet", "cursor": { "anthropic": "claude-sonnet-5-5",            "openai": "gpt-5.6-terra", "mixed": "gpt-5.6-terra" } },
+    "final_reviewer": { "claude": "opus",   "cursor": { "anthropic": "claude-opus-5-5[effort=high]", "openai": "gpt-5.6-sol",   "mixed": "gpt-5.6-sol" } },
+    "goldfish":       { "claude": "opus",   "cursor": { "anthropic": "claude-opus-5-5",              "openai": "gpt-5.6-sol",   "mixed": "gpt-5.6-sol" } }
   },
-  "escalation": { "claude": "opus", "cursor": "claude-opus-5-5[effort=high]" }
+  "escalation": { "claude": "opus", "cursor": { "anthropic": "claude-opus-5-5[effort=high]", "openai": "gpt-5.6-sol", "mixed": "claude-opus-5-5[effort=high]" } }
 }

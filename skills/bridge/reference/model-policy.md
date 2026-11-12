@@ -2,16 +2,20 @@
 
 The session model (whatever the user picked) does routing, brainstorming dialogue, the elephant role and controller work. Delegated work runs on the model set in each agent's frontmatter (generated from `config/models.json` in the bridge repo):
 
-| Agent | Default (Claude) | Used for |
-|---|---|---|
-| `bridge-explorer` | haiku | Read-only codebase recon before brainstorming or design; returns a compact file map |
-| `bridge-mechanic` | haiku | Tasks with `Size: mechanical` (plan already holds the code) |
-| `bridge-implementer` | sonnet | `Size: standard` / `complex` tasks, fix rounds 1–2 |
-| `bridge-reviewer` | sonnet | Per-task spec-compliance + quality review (never below mid tier) |
-| `bridge-final-reviewer` | opus | Whole-change review before archive |
-| `bridge-goldfish` | opus | Fresh-context design review (T3); pass model "sonnet" for comprehension/style roles |
+| Agent | Claude Code | Cursor `anthropic` (default) | Cursor `openai` | Used for |
+|---|---|---|---|---|
+| `bridge-explorer` | haiku | claude-haiku-5-5 | gpt-5.6-luna | Read-only recon; returns a compact file map |
+| `bridge-mechanic` | haiku | claude-haiku-5-5 | gpt-5.6-luna | Tasks with `Size: mechanical` |
+| `bridge-implementer` | sonnet | claude-sonnet-5-5 | gpt-5.6-terra | `standard`/`complex` tasks, fix rounds 1-2 |
+| `bridge-reviewer` | sonnet | claude-sonnet-5-5 | gpt-5.6-terra | Per-task spec + quality review (never below mid tier) |
+| `bridge-final-reviewer` | opus | claude-opus-5-5[effort=high] | gpt-5.6-sol | Whole-change review before archive |
+| `bridge-goldfish` | opus | claude-opus-5-5 | gpt-5.6-sol | Fresh-context design review (T3) |
 
-Escalation: fix round 3 re-dispatches `bridge-implementer` with model override `opus` (Claude Agent tool `model` parameter; in Cursor pick the stronger model if the tool allows, otherwise ask the user).
+Cursor profile `mixed`: Claude models implement and GPT models review (reviewer, final reviewer, goldfish). A reviewer from a different model family is less likely to share the implementer's blind spots. Switch with `bridge cursor-profile <anthropic|openai|mixed>`. Claude Code always uses the Claude column, because it cannot run OpenAI models.
+
+These models apply whatever model the main session runs on. In Claude Code, a per-call model override (used for escalation) beats agent frontmatter, which beats `CLAUDE_CODE_SUBAGENT_MODEL`. In Cursor the frontmatter model is used even when the chat is on Auto, unless an admin block, a plan limit, or a legacy plan without Max Mode forces Composer.
+
+Escalation: fix round 3 re-dispatches `bridge-implementer` on the strong model: Claude Code passes model override `opus` to the Agent tool. In Cursor, use the profile's escalation model (anthropic/mixed: claude-opus-5-5, openai: gpt-5.6-sol) if the tool allows a per-call model; otherwise ask the user.
 
 Cost rules:
 - Prefer `bridge-mechanic` whenever the task text already contains the exact code and test.

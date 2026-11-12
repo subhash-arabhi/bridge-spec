@@ -392,12 +392,17 @@ function findClone(repoSlug) {
   return null;
 }
 function gitProbe(dir, u) {
-  const g = (...a) => { const r = tryRun('git', ['-C', dir, ...a]); return r.status === 0 ? r.stdout.trim() : null; };
+  // Network git calls get a hard timeout and no credential prompts: sandbox proxies can hang them.
+  const g = (...a) => {
+    const net = a[0] === 'fetch';
+    const r = tryRun('git', ['-C', dir, ...a], { timeout: net ? 45000 : 15000, env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } });
+    return r.status === 0 ? r.stdout.trim() : null;
+  };
   const sha = g('rev-parse', 'HEAD');
-  if (u.vendored_from && sha !== u.sha && !g('cat-file', '-e', `${u.sha}^{commit}`)) {
+  if (u.vendored_from && sha !== u.sha && g('cat-file', '-e', `${u.sha}^{commit}`) === null) {
     g('fetch', '--quiet', '--unshallow') ?? g('fetch', '--quiet', 'origin', u.sha);
   }
-  g('fetch', '--quiet', '--tags');
+  if (!g('tag', '--list')) g('fetch', '--quiet', '--tags');
   const latest = (g('tag', '--sort=-v:refname') || '').split('\n').find((t) => /^v?\d+\.\d+\.\d+$/.test(t)) || null;
   let files = null;
   if (u.vendored_from && sha !== u.sha) {

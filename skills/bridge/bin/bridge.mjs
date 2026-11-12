@@ -370,31 +370,68 @@ function cmdDoctor() {
 async function gh(pathname) {
   const headers = { 'User-Agent': 'bridge-sync', Accept: 'application/vnd.github+json' };
   if (process.env.GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
-  const r = await fetch(`https://api.github.com/${pathname}`, { headers });
+  let r = await fetch(`https://api.github.com/${pathname}`, { headers });
+  if (r.status === 401 && headers.Authorization) {
+    // A sandbox may hand out a token the public API rejects; public repos work unauthenticated.
+    delete headers.Authorization; delete process.env.GITHUB_TOKEN;
+    r = await fetch(`https://api.github.com/${pathname}`, { headers });
+  }
   if (r.status === 404) return null;
   if (!r.ok) throw new Error(`GET ${pathname}: ${r.status}`);
   return r.json();
+}
+// Local clone of an upstream (cloud routines clone each upstream next to this repo).
+function findClone(repoSlug) {
+  const base = repoSlug.split('/')[1].toLowerCase();
+  const roots = [process.env.BRIDGE_UPSTREAM_DIR, path.resolve(REPO_DIR, '..')].filter(Boolean);
+  for (const root of roots) {
+    if (!fs.existsSync(root)) continue;
+    const hit = fs.readdirSync(root).find((d) => d.toLowerCase() === base);
+    if (hit && fs.existsSync(path.join(root, hit, '.git'))) return path.join(root, hit);
+  }
+  return null;
+}
+function gitProbe(dir, u) {
+  const g = (...a) => { const r = tryRun('git', ['-C', dir, ...a]); return r.status === 0 ? r.stdout.trim() : null; };
+  const sha = g('rev-parse', 'HEAD');
+  if (u.vendored_from && sha !== u.sha && !g('cat-file', '-e', `${u.sha}^{commit}`)) {
+    g('fetch', '--quiet', '--unshallow') ?? g('fetch', '--quiet', 'origin', u.sha);
+  }
+  g('fetch', '--quiet', '--tags');
+  const latest = (g('tag', '--sort=-v:refname') || '').split('\n').find((t) => /^v?\d+\.\d+\.\d+$/.test(t)) || null;
+  let files = null;
+  if (u.vendored_from && sha !== u.sha) {
+    const d = g('diff', '--name-only', u.sha, sha);
+    files = d === null ? ['(unknown: pinned commit not available in clone)'] : d.split('\n').filter(Boolean);
+  }
+  return { sha, latest, files, source: `git:${dir}` };
+}
+async function apiProbe(u) {
+  const rel = await gh(`repos/${u.repo}/releases/latest`);
+  const repo = await gh(`repos/${u.repo}`);
+  const head = await gh(`repos/${u.repo}/commits/${repo.default_branch}`);
+  let files = null;
+  if (u.vendored_from && head.sha !== u.sha) {
+    const cmp = await gh(`repos/${u.repo}/compare/${u.sha}...${head.sha}`);
+    files = (cmp?.files || []).map((f) => f.filename);
+  }
+  return { sha: head.sha, latest: rel?.tag_name ?? null, files, source: 'api' };
 }
 async function cmdUpstreamCheck() {
   const lock = JSON.parse(fs.readFileSync(path.join(REPO_DIR, 'upstream.lock.json'), 'utf8'));
   const res = [];
   for (const [name, u] of Object.entries(lock.upstreams)) {
-    const rel = await gh(`repos/${u.repo}/releases/latest`);
-    const repo = await gh(`repos/${u.repo}`);
-    const head = await gh(`repos/${u.repo}/commits/${repo.default_branch}`);
-    const latest = rel?.tag_name ?? null;
-    const sha = head.sha;
-    const versionChanged = Boolean(u.version && latest && latest !== u.version);
-    let vendoredChanged = [];
-    if (u.vendored_from && sha !== u.sha) {
-      const cmp = await gh(`repos/${u.repo}/compare/${u.sha}...${sha}`);
-      const files = (cmp?.files || []).map((f) => f.filename);
-      vendoredChanged = files.filter((f) => u.vendored_from.some((v) => (v.endsWith('/') ? f.startsWith(v) : f === v)));
-    }
+    const clone = findClone(u.repo);
+    let p;
+    try { p = clone ? gitProbe(clone, u) : await apiProbe(u); }
+    catch (e) { die(`${name}: ${e.message}. No local clone found either; clone ${u.repo} next to this repo or set BRIDGE_UPSTREAM_DIR.`); }
+    const { sha, latest } = p;
+    const versionChanged = Boolean(u.version && latest && latest.replace(/^v/, '') !== u.version.replace(/^v/, ''));
+    const vendoredChanged = (p.files || []).filter((f) => f.startsWith('(unknown') || u.vendored_from.some((v) => (v.endsWith('/') ? f.startsWith(v) : f === v)));
     const [lm, lmi] = (u.version || 'v0.0').replace(/^v/, '').split('.').map(Number);
     const [nm, nmi] = (latest || u.version || 'v0.0').replace(/^v/, '').split('.').map(Number);
     res.push({
-      name, repo: u.repo, pinned: u.version ?? null, latest, pinned_sha: u.sha, head_sha: sha,
+      name, repo: u.repo, source: p.source, pinned: u.version ?? null, latest, pinned_sha: u.sha, head_sha: sha,
       version_changed: versionChanged,
       severity: u.use?.startsWith('ideas-only') ? (sha !== u.sha ? 'ideas' : 'none')
         : !versionChanged && !vendoredChanged.length ? 'none' : nm > lm ? 'major' : nmi > lmi ? 'minor' : 'patch',

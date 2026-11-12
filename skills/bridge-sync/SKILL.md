@@ -19,13 +19,12 @@ node skills/bridge/bin/bridge.mjs upstream-check > /tmp/upstream.json
 `git checkout -b bridge-sync/$(date +%Y-%m)`
 
 ## 3. Per actionable upstream (openspec, superpowers, egm)
-Fetch only what you need:
+Each upstream is cloned next to this repo (the `source` field of upstream-check shows the path; the cloud sandbox may block the GitHub API, so work from the clone). If it is shallow, run `git -C <clone> fetch --unshallow` first. Read only what you need:
 ```bash
-git clone --filter=blob:none https://github.com/<repo> /tmp/up/<name>
-git -C /tmp/up/<name> log --oneline <pinned_sha>..<head_sha> | head -50
-git -C /tmp/up/<name> diff <pinned_sha> <head_sha> -- <vendored_files_changed...>
+git -C <clone> log --oneline <pinned_sha>..<head_sha> | head -50
+git -C <clone> diff <pinned_sha> <head_sha> -- <vendored_files_changed...>
 ```
-Read the release notes (`gh release view <tag> -R <repo>`, or the CHANGELOG) between the pinned and latest versions.
+For release notes, read the CHANGELOG or release notes file in the clone, from the pinned version to the latest.
 
 Then classify and act:
 - **openspec** (CLI dependency): look for changes to CLI commands or flags (`init --tools none`, `new change`, `validate --strict --no-interactive`, `archive -y`), the delta spec format, `tasks.md` checkbox parsing, and the directory layout. Update `skills/bridge/bin/bridge.mjs` guards, `reference/tier-2-requirement.md`, `reference/tier-0-1-light.md`, `reference/artifact-map.md` and the test fixture to match. Install the new CLI version in this environment before testing.
@@ -33,7 +32,7 @@ Then classify and act:
 - **major** severity: also re-read `skills/bridge/SKILL.md` and the tier files end to end and rewrite any part that no longer matches upstream behavior. Explain each rewrite in the PR.
 
 ## 4. comet (ideas only)
-For `ideas`: read the commit log and README or SKILL.md diffs of `assets/skills/comet-classic/` since the pinned sha. Copy no code or text. List up to 5 ideas worth adopting (routing, guards, token economy, recovery), each with a one-line rationale, in the PR body. Bump comet's sha in the lock.
+For `ideas`: in the comet clone, read the commit log and README or SKILL.md diffs of `assets/skills/comet-classic/` since the pinned sha. Copy no code or text. List up to 5 ideas worth adopting (routing, guards, token economy, recovery), each with a one-line rationale, in the PR body. Bump comet's sha in the lock.
 
 ## 5. Lock, test, PR
 1. Update `upstream.lock.json`: version, sha and `checked` for each processed upstream.

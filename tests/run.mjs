@@ -149,3 +149,15 @@ test('cursor profiles: every role resolves for anthropic, openai and mixed', asy
   assert.match(mx['bridge-reviewer.md'], /^model: gpt-/m, 'mixed: GPT reviews');
   assert.match(renderAgents(ROOT, 'openai').claude['bridge-reviewer.md'], /^model: sonnet$/m, 'Claude Code agents unaffected by cursor profile');
 });
+
+test('env-keys: names only, values never returned', async () => {
+  const { envKeys } = await import('../skills/bridge/bin/bridge.mjs');
+  const keys = envKeys('# c\nexport API_KEY=sk-secret\nDB_URL = "postgres://u:p@h/db"\n\nNEXT_PUBLIC_X=1\nAPI_KEY=dup\nnot a line\n');
+  assert.deepEqual(keys, ['API_KEY', 'DB_URL', 'NEXT_PUBLIC_X']);
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'bridge-env-'));
+  git(d, 'init', '-q');
+  fs.writeFileSync(path.join(d, '.env.local'), 'SECRET_TOKEN=abc123\n');
+  const r = run(d, 'env-keys');
+  assert.equal(r.status, 0); assert.match(r.stdout, /SECRET_TOKEN/); assert.doesNotMatch(r.stdout, /abc123/);
+  fs.rmSync(d, { recursive: true, force: true });
+});

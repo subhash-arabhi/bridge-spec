@@ -17,5 +17,8 @@ The change alters a requirement already in `openspec/specs/`. Keep the living sp
 3. Do the T1 work. Write a one-task `tasks.md` and tick it.
 4. `openspec archive <id> -y`.
 
+## ARCHITECTURE.md
+T1: if the file is missing, or your change altered the structure, commands, resources or env variable names, dispatch `bridge-cartographer` (`create` or `update`) at the end. T0: only when an env variable name, command or resource changed.
+
 ## Escalate
 Stop and re-route as T2 if you discover a public API, schema or cross-module change, or the user starts adding requirements.

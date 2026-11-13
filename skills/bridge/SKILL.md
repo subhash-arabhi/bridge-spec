@@ -9,6 +9,9 @@ OpenSpec owns **WHAT** (living requirements, delta specs, archive). Superpowers-
 
 Token rule: read only the files named for the tier you are on, and only when you reach that step. Hand subagents file paths, never conversation history.
 
+## 0. Repo context
+If `ARCHITECTURE.md` exists at the repo root, read it before exploring the code. If it is missing and the work is T1 or larger, dispatch `bridge-cartographer` (mode `create`) first. Rules and when to update it: `reference/architecture-doc.md`.
+
 ## 1. Route (always first)
 
 Check for work in progress: `ls openspec/changes 2>/dev/null` (ignore `archive/`). If the request continues one, set `active_change`.
@@ -48,7 +51,7 @@ If `spec_delta: true` comes back for T1, also add a minimal OpenSpec delta and a
 
 ## 4. Models
 
-Subagents carry their own models (`reference/model-policy.md`); the session model is unchanged. Agents: `bridge-explorer`, `bridge-mechanic`, `bridge-implementer`, `bridge-reviewer`, `bridge-final-reviewer`, `bridge-goldfish`.
+Subagents carry their own models (`reference/model-policy.md`); the session model is unchanged. Agents: `bridge-explorer`, `bridge-cartographer`, `bridge-mechanic`, `bridge-implementer`, `bridge-reviewer`, `bridge-final-reviewer`, `bridge-goldfish`.
 
 ## Hard rules
 
@@ -57,3 +60,4 @@ Subagents carry their own models (`reference/model-policy.md`); the session mode
 - Phase changes only after `bridge guard <phase> <id>` exits 0.
 - Only the controller (this session) ticks `tasks.md`.
 - Implementers and reviewers never see chat history.
+- Keep `ARCHITECTURE.md` current through `bridge-cartographer`. It may contain env variable names but never their values.

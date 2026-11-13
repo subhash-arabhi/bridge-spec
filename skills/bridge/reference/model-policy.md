@@ -5,6 +5,7 @@ The session model (whatever the user picked) does routing, brainstorming dialogu
 | Agent | Claude Code | Cursor `anthropic` (default) | Cursor `openai` | Used for |
 |---|---|---|---|---|
 | `bridge-explorer` | haiku | claude-haiku-5-5 | gpt-5.6-luna | Read-only recon; returns a compact file map |
+| `bridge-cartographer` | haiku | claude-haiku-5-5 | gpt-5.6-luna | Create/update ARCHITECTURE.md |
 | `bridge-mechanic` | haiku | claude-haiku-5-5 | gpt-5.6-luna | Tasks with `Size: mechanical` |
 | `bridge-implementer` | sonnet | claude-sonnet-5-5 | gpt-5.6-terra | `standard`/`complex` tasks, fix rounds 1-2 |
 | `bridge-reviewer` | sonnet | claude-sonnet-5-5 | gpt-5.6-terra | Per-task spec + quality review (never below mid tier) |

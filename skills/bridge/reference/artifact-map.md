@@ -10,6 +10,7 @@ inside the OpenSpec change, so there is exactly one place to look.
 | Delta specs (behavior, acceptance) | `openspec/changes/<id>/specs/<capability>/spec.md` | Open phase | `## ADDED/MODIFIED/REMOVED/RENAMED Requirements`; each `### Requirement:` has SHALL/MUST + ≥1 `#### Scenario:` with `- **WHEN**` / `- **THEN**` |
 | Technical design (brainstorm output) | `openspec/changes/<id>/design.md` | Design phase | Replaces Superpowers `docs/superpowers/specs/*` |
 | Implementation plan + completion record | `openspec/changes/<id>/tasks.md` | Plan phase; ticked only by the controller | Replaces Superpowers `docs/superpowers/plans/*` |
+| Repo context for fresh agents | `ARCHITECTURE.md` (repo root) | `bridge-cartographer` | Structure, design, run commands, published resources, env variable **names**; see `architecture-doc.md` |
 | Epic design doc (T3) | `docs/designs/<epic>.md` | Elephant | Living architecture doc, linked from each child proposal |
 | Bridge state (per change) | `.bridge/changes/<id>/state.json` | `bridge state` | gitignored; resume point after compaction |
 | Task brief | `.bridge/changes/<id>/briefs/task-<n>.md` | `bridge brief` | What the implementer reads |
@@ -44,5 +45,6 @@ bridge state <id> [--set k=v ...]          → read/update .bridge/changes/<id>/
 bridge brief <id> <task-id>                → writes briefs/task-<task-id>.md, prints path
 bridge review-pkg <id> <base> [head]       → writes reviews/<base7>..<head7>.diff, prints path
 bridge guard <open|plan|verify> <id>       → exit 0 = phase may advance; prints failures otherwise
+bridge env-keys                            → env variable NAMES per .env* file (never values)
 bridge doctor                              → install health
 ```

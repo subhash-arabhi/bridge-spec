@@ -255,6 +255,7 @@ export function guard(phase, id) {
       const r = tryRun('sh', ['-c', cmd], { cwd: repoRoot(), maxBuffer: 64 * 1024 * 1024 });
       if (r.status !== 0) fails.push(`tests failed (${cmd}):\n${(r.stdout + r.stderr).trim().split('\n').slice(-40).join('\n')}`);
     }
+    if (!findArchDoc(repoRoot())) warns.push('ARCHITECTURE.md missing: dispatch bridge-cartographer (create) at archive');
   } else return { ok: false, fails: [`unknown phase ${phase} (open|plan|verify)`], warns };
   return { ok: fails.length === 0, fails, warns };
 }
@@ -392,6 +393,34 @@ function cmdDoctor() {
 }
 
 // ---------------------------------------------------------------- upstream check (monthly sync)
+// ---------------------------------------------------------------- architecture doc + env key names
+export function findArchDoc(root) {
+  const hit = fs.readdirSync(root).find((f) => f.toLowerCase() === 'architecture.md');
+  return hit ? path.join(root, hit) : null;
+}
+// Names only: values are never read into output. Comments, blanks and `export ` prefixes handled.
+export function envKeys(text) {
+  const keys = [];
+  for (const line of text.split('\n')) {
+    const m = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_.-]*)\s*=/);
+    if (m && !keys.includes(m[1])) keys.push(m[1]);
+  }
+  return keys;
+}
+function cmdEnvKeys() {
+  const root = repoRoot();
+  const skip = new Set(['node_modules', '.git', '.venv', 'venv', 'dist', 'build', '.next', 'vendor']);
+  const files = [];
+  const walk = (dir, depth) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (e.isDirectory()) { if (depth < 2 && !skip.has(e.name)) walk(path.join(dir, e.name), depth + 1); }
+      else if (/^\.env(\..+)?$/.test(e.name) || e.name.endsWith('.env')) files.push(path.join(dir, e.name));
+    }
+  };
+  walk(root, 0);
+  out(Object.fromEntries(files.map((f) => [path.relative(root, f), envKeys(fs.readFileSync(f, 'utf8'))])));
+}
+
 async function gh(pathname) {
   const headers = { 'User-Agent': 'bridge-sync', Accept: 'application/vnd.github+json' };
   if (process.env.GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
@@ -485,6 +514,7 @@ const HELP = `bridge <command>
   tasks <id>                      list tasks with status/size
   upstream-check                  compare upstream.lock.json with GitHub (monthly sync)
   cursor-profile [anthropic|openai|mixed]  show/switch Cursor agent models
+  env-keys                        env variable NAMES per .env* file (never values)
   build | install [--force] | doctor`;
 
 const isMain = process.argv[1] && fs.realpathSync(process.argv[1]) === SELF;
@@ -506,6 +536,7 @@ if (isMain) {
     case 'install': cmdInstall(args); break;
     case 'doctor': cmdDoctor(); break;
     case 'cursor-profile': cmdCursorProfile(args); break;
+    case 'env-keys': cmdEnvKeys(); break;
     case 'upstream-check': cmdUpstreamCheck().catch((e) => die(e.message)); break;
     default: out(HELP); process.exit(cmd ? 2 : 0);
   }

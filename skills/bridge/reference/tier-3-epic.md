@@ -13,7 +13,8 @@ Use for multi-capability architecture, new subsystems, large workflow design, or
 3. Read `../vendor/egm/goldfish-protocol.md` and run the review loop: comprehension first, then the critic roles in parallel, then implementation-readiness, then the synthesizer. Role files are in `../vendor/egm/roles/`. Resolve the findings in the elephant log. At most 3 rounds, then ask the human.
 4. Human approval gate: show a summary of the doc, the goldfish verdicts and any open risks. Commit `docs/designs/<epic>.md`.
 5. Decompose: for each change in the decomposition, in dependency order, run the T2 pipeline (`tier-2-requirement.md`). Each proposal links `docs/designs/<epic>.md`. **Replace T2's Design step** by copying the relevant section of the approved doc into the change's `design.md`. Do not re-brainstorm.
-6. Keep the design doc living: if a T2 change deviates, update `docs/designs/<epic>.md` and log the decision in elephant.md.
+6. After approval, and after each child change is archived, dispatch `bridge-cartographer` (`update`) so ARCHITECTURE.md points at `docs/designs/<epic>.md` and reflects the new structure.
+7. Keep the design doc living: if a T2 change deviates, update `docs/designs/<epic>.md` and log the decision in elephant.md.
 
 ## Cost control
 - Minimum goldfish set: comprehension, design_critic, implementation_readiness, synthesizer. Add structural/zoom_out/codebase_details only for large or cross-system docs.

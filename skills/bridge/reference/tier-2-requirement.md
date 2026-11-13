@@ -28,6 +28,7 @@ Read `../vendor/superpowers/writing-plans.md`. Output: `openspec/changes/<id>/ta
 `bridge guard verify <id>` (all tasks ticked, `openspec validate --strict`, tests green). Then `bridge review-pkg <id> <base> HEAD` → `bridge-final-reviewer` against proposal + all delta specs + design. Fix findings via the Build loop. Verify→Build at most 3 times, then ask the user.
 
 ## 6. Archive and finish
-1. `openspec archive <id> -y`: the deltas merge into `openspec/specs/`, and the change moves to `changes/archive/`. Commit that.
-2. Finish the branch per `../vendor/superpowers/worktree-and-finish.md` (Finish section): verify tests, offer merge / PR / keep / discard.
-3. Report to the user: requirements added or changed, tests added, commits, anything deferred.
+1. `openspec archive <id> -y`: the deltas merge into `openspec/specs/`, and the change moves to `changes/archive/`.
+2. Dispatch `bridge-cartographer` in `update` mode (in `create` mode if the file is missing) with range `<base>..HEAD`. Commit ARCHITECTURE.md together with the archive.
+3. Finish the branch per `../vendor/superpowers/worktree-and-finish.md` (Finish section): verify tests, offer merge / PR / keep / discard.
+4. Report to the user: requirements added or changed, tests added, commits, anything deferred.

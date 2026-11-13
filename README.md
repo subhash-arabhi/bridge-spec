@@ -5,6 +5,7 @@ One global skill for **Claude Code and Cursor** that applies engineering discipl
 - **OpenSpec** decides **WHAT**: living requirements in `openspec/specs/`, delta specs per change, archive.
 - **Superpowers** methods (vendored, trimmed) decide **HOW**: bounded brainstorming, strict TDD, isolated implementer and reviewer subagents.
 - **Elephant-Goldfish** (vendored, trimmed) handles **very large design**: a long-context elephant designs, and fresh-context goldfish review.
+- **ARCHITECTURE.md** in every repo is the one file a fresh agent reads first: structure, design, run commands, published resources, and env variable names (never values). A Haiku-sized `bridge-cartographer` agent creates and updates it.
 - **Tiers** keep small work cheap: T0 trivial · T1 small (TDD-lite) · T2 requirement (full pipeline) · T3 epic (EGM, then N T2 changes). `bridge route` decides from a slot frame.
 - **Per-role models** via subagents, applied whatever model the session runs on. Edit them in `config/models.json`.
 
@@ -24,7 +25,7 @@ bridge doctor
 ```
 Then paste the printed rubric into **Cursor → Settings → Rules → User Rules** once, and check the Cursor model IDs in `config/models.json` against Cursor's model picker.
 
-Installed footprint: `~/.claude/skills/bridge` and `~/.cursor/skills/bridge` (symlinks to this repo), `~/.local/bin/bridge`, 6 `bridge-*` agents in `~/.claude/agents` and `~/.cursor/agents`, and one marker block in `~/.claude/CLAUDE.md`. No hooks.
+Installed footprint: `~/.claude/skills/bridge` and `~/.cursor/skills/bridge` (symlinks to this repo), `~/.local/bin/bridge`, 7 `bridge-*` agents in `~/.claude/agents` and `~/.cursor/agents`, and one marker block in `~/.claude/CLAUDE.md`. No hooks.
 
 After pulling changes: `bridge install && bridge doctor`.
 

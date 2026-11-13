@@ -8,12 +8,69 @@
   ],
   "cursor_profile": "anthropic",
   "roles": {
-    "explorer":       { "claude": "haiku",  "cursor": { "anthropic": "claude-haiku-5-5",             "openai": "gpt-5.6-luna",  "mixed": "claude-haiku-5-5" } },
-    "mechanic":       { "claude": "haiku",  "cursor": { "anthropic": "claude-haiku-5-5",             "openai": "gpt-5.6-luna",  "mixed": "claude-haiku-5-5" } },
-    "implementer":    { "claude": "sonnet", "cursor": { "anthropic": "claude-sonnet-5-5",            "openai": "gpt-5.6-terra", "mixed": "claude-sonnet-5-5" } },
-    "reviewer":       { "claude": "sonnet", "cursor": { "anthropic": "claude-sonnet-5-5",            "openai": "gpt-5.6-terra", "mixed": "gpt-5.6-terra" } },
-    "final_reviewer": { "claude": "opus",   "cursor": { "anthropic": "claude-opus-5-5[effort=high]", "openai": "gpt-5.6-sol",   "mixed": "gpt-5.6-sol" } },
-    "goldfish":       { "claude": "opus",   "cursor": { "anthropic": "claude-opus-5-5",              "openai": "gpt-5.6-sol",   "mixed": "gpt-5.6-sol" } }
+    "explorer": {
+      "claude": "haiku",
+      "cursor": {
+        "anthropic": "claude-haiku-5-5",
+        "openai": "gpt-5.6-luna",
+        "mixed": "claude-haiku-5-5"
+      }
+    },
+    "mechanic": {
+      "claude": "haiku",
+      "cursor": {
+        "anthropic": "claude-haiku-5-5",
+        "openai": "gpt-5.6-luna",
+        "mixed": "claude-haiku-5-5"
+      }
+    },
+    "cartographer": {
+      "claude": "haiku",
+      "cursor": {
+        "anthropic": "claude-haiku-5-5",
+        "openai": "gpt-5.6-luna",
+        "mixed": "claude-haiku-5-5"
+      }
+    },
+    "implementer": {
+      "claude": "sonnet",
+      "cursor": {
+        "anthropic": "claude-sonnet-5-5",
+        "openai": "gpt-5.6-terra",
+        "mixed": "claude-sonnet-5-5"
+      }
+    },
+    "reviewer": {
+      "claude": "sonnet",
+      "cursor": {
+        "anthropic": "claude-sonnet-5-5",
+        "openai": "gpt-5.6-terra",
+        "mixed": "gpt-5.6-terra"
+      }
+    },
+    "final_reviewer": {
+      "claude": "opus",
+      "cursor": {
+        "anthropic": "claude-opus-5-5[effort=high]",
+        "openai": "gpt-5.6-sol",
+        "mixed": "gpt-5.6-sol"
+      }
+    },
+    "goldfish": {
+      "claude": "opus",
+      "cursor": {
+        "anthropic": "claude-opus-5-5",
+        "openai": "gpt-5.6-sol",
+        "mixed": "gpt-5.6-sol"
+      }
+    }
   },
-  "escalation": { "claude": "opus", "cursor": { "anthropic": "claude-opus-5-5[effort=high]", "openai": "gpt-5.6-sol", "mixed": "claude-opus-5-5[effort=high]" } }
+  "escalation": {
+    "claude": "opus",
+    "cursor": {
+      "anthropic": "claude-opus-5-5[effort=high]",
+      "openai": "gpt-5.6-sol",
+      "mixed": "claude-opus-5-5[effort=high]"
+    }
+  }
 }

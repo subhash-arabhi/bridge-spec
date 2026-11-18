@@ -161,3 +161,39 @@ test('env-keys: names only, values never returned', async () => {
   assert.equal(r.status, 0); assert.match(r.stdout, /SECRET_TOKEN/); assert.doesNotMatch(r.stdout, /abc123/);
   fs.rmSync(d, { recursive: true, force: true });
 });
+
+test('reviewPlan: complex/high-risk solo, low-risk batched by 4, lean skips mechanical', async () => {
+  const { reviewPlan } = await import('../skills/bridge/bin/bridge.mjs');
+  const md = ['## 1. G'];
+  const spec = { '1.1': 'Size: mechanical\n  - Risk: low', '1.2': 'Size: complex', '1.3': 'Size: standard\n  - Risk: low', '1.4': 'Size: mechanical\n  - Risk: low',
+    '1.5': 'Size: standard\n  - Risk: low', '1.6': 'Size: standard\n  - Risk: low', '1.7': 'Size: standard\n  - Risk: low', '1.8': 'Size: standard\n  - Risk: high' };
+  for (const [id, b] of Object.entries(spec)) md.push(`- [ ] ${id} task ${id}\n  - Files: a\n  - Test: t\n  - ${b}`);
+  const tasks = parseTasks(md.join('\n'));
+  const r = reviewPlan(tasks);
+  assert.deepEqual(r.solo.map((s) => s.id), ['1.2', '1.8']);
+  assert.deepEqual(r.batches, [['1.1'], ['1.3', '1.4', '1.5', '1.6'], ['1.7']]);
+  assert.equal(r.reviews, 5);
+  assert.deepEqual(reviewPlan(tasks, 'lean').skipped, ['1.1', '1.4']);
+  assert.equal(reviewPlan(tasks, 'every-task').reviews, 8);
+  assert.equal(reviewPlan(parseTasks('## 1. G\n- [ ] 1.1 add login session check\n  - Size: standard')).solo[0].why, 'risk', 'keyword risk without Risk line');
+});
+
+test('review-pkg: lean context, lockfiles omitted, --final drops tests', () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'bridge-rp-'));
+  git(d, 'init', '-q'); git(d, 'config', 'user.email', 't@t'); git(d, 'config', 'user.name', 't');
+  fs.writeFileSync(path.join(d, 'a.py'), Array.from({ length: 40 }, (_, i) => `x${i} = ${i}`).join('\n') + '\n');
+  git(d, 'add', '-A'); git(d, 'commit', '-qm', 'base'); const base = git(d, 'rev-parse', 'HEAD').trim();
+  fs.writeFileSync(path.join(d, 'a.py'), fs.readFileSync(path.join(d, 'a.py'), 'utf8').replace('x20 = 20', 'x20 = 99'));
+  fs.mkdirSync(path.join(d, 'tests')); fs.writeFileSync(path.join(d, 'tests/test_a.py'), 'def test_a(): assert True\n');
+  fs.writeFileSync(path.join(d, 'uv.lock'), 'lock '.repeat(500));
+  git(d, 'add', '-A'); git(d, 'commit', '-qm', 'change');
+  const r = JSON.parse(run(d, 'review-pkg', 'c1', base).stdout);
+  const txt = fs.readFileSync(path.join(d, r.package), 'utf8');
+  assert.match(txt, /Omitted from diff[\s\S]*uv\.lock/); assert.doesNotMatch(txt, /lock lock/);
+  assert.match(txt, /x17 = 17/); assert.doesNotMatch(txt, /x10 = 10/, 'only 3 lines of context');
+  assert.match(txt, /test_a/);
+  const f = JSON.parse(run(d, 'review-pkg', 'c1', base, 'HEAD', '--final').stdout);
+  const ft = fs.readFileSync(path.join(d, f.package), 'utf8');
+  assert.match(ft, /Omitted[\s\S]*tests\/test_a\.py/); assert.doesNotMatch(ft, /def test_a/); assert.match(ft, /x20 = 99/);
+  fs.rmSync(d, { recursive: true, force: true });
+});

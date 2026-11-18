@@ -41,10 +41,17 @@ Read the returned status block; open the report file only when needed.
 
 Never ignore an escalation or retry the same model unchanged.
 
-### 3. Review
+### 3. Review (risk-based; reviews are the main token cost)
 
-1. `bridge review-pkg <id> <task_base> HEAD` prints the diff path. Use the recorded task_base, never `HEAD~1`.
-2. Dispatch `bridge-reviewer` with: diff path, brief path, report path, the delta spec paths in scope, and output path `.bridge/changes/<id>/reviews/task-<n>.md`.
+Before the first task, run `bridge review-plan <id>` (mode from `review_mode` in state: `risk` by default; `lean`; or `every-task` if the user asks). It returns:
+- `solo`: tasks with `Size: complex` or `Risk: high` (or risky keywords such as auth, schema, migration, payment, concurrency or public API). Review each one right after it is done.
+- `batches`: up to 4 consecutive low-risk tasks. Do not review them one at a time. When a batch's last task is done, run one review over the batch's range (the first task's base to HEAD), with every brief path in the batch.
+- `skipped` (`lean` mode only): mechanical, low-risk tasks. No per-task review; the final review and the tests cover them.
+
+Also review a task on its own, regardless of the plan, when the implementer returned DONE_WITH_CONCERNS or the package reports more than ~400 `changed_lines`.
+
+1. `bridge review-pkg <id> <task_base> HEAD` prints the diff path and `changed_lines`. Use the recorded task_base, never `HEAD~1`. The package is lean by design: 3 lines of context, no lockfiles or generated files. The full file list is still shown, and the reviewer opens files when it needs more context.
+2. Dispatch `bridge-reviewer` with: the diff path, the brief path(s), the report path(s), only the delta spec files the brief(s) name, and output path `.bridge/changes/<id>/reviews/task-<n>.md` (for a batch, `batch-<first>-<last>.md`).
 3. Do not ask it to re-run tests the implementer ran, and never pre-judge findings ("do not flag X").
 4. Read its last line. `VERDICT: APPROVE` with Spec and Quality both passing → complete. Anything else → fix loop. A review missing either verdict is invalid; re-dispatch.
 5. "Cannot verify from diff" items: check them yourself; a real gap enters the fix loop.
@@ -58,7 +65,7 @@ A round is one fix dispatch plus one scoped re-review.
 - **Rounds 1-2:** resume the same implementer (agent id from state) with the open Critical/Important findings verbatim. If resuming is impossible, dispatch fresh with brief, report path, and findings.
 - **Round 3:** dispatch a fresh `bridge-implementer` on a stronger model (Claude Code: Agent tool `model: "opus"`), with brief, report path, findings, and: "A prior implementer attempted this twice; you own it now. Read the report file for what was tried."
 - **Every round:** the implementer fixes, re-runs covering tests, appends a fix report to the same report file. Confirm it names tests, command, and output before re-review.
-- **Re-review:** `bridge review-pkg <id> <previous_head> HEAD`; dispatch `bridge-reviewer` with the diff path, brief path, report path, the previous review path, and output path `.bridge/changes/<id>/reviews/task-<n>-round-<r>.md`. It verdicts each finding and checks only the fix diff.
+- **Re-review:** `bridge review-pkg <id> <previous_head> HEAD` (fix diff only); dispatch `bridge-reviewer` with the diff path, brief path, report path, the previous review path, and output path `.bridge/changes/<id>/reviews/task-<n>-round-<r>.md`. It verdicts each finding and checks only the fix diff.
 - After each round: `bridge state <id> --set task.<n>.round=<r>`.
 - **After round 3 with findings open:** stop and ask the human, with the open findings and your recommendation. Do not run a fourth round or silently discard findings.
 
@@ -69,8 +76,8 @@ Only after approval: tick `- [x] <n>` in tasks.md, `bridge state <id> --set task
 ## After all tasks
 
 1. `bridge guard verify <id>`. Fix what it reports via a fix dispatch, not by hand.
-2. `bridge review-pkg <id> <base> HEAD` (base from state).
-3. Dispatch `bridge-final-reviewer` on the most capable model with: diff path, change dir path, the delta spec paths, and output path `.bridge/changes/<id>/reviews/final.md`. Point it at the `minor.*` and `ruling.*` entries in state.json.
+2. `bridge review-pkg <id> <base> HEAD --final` (base from state). This drops tests and lockfiles, which per-task reviews already covered; their names stay in the file list.
+3. Dispatch `bridge-final-reviewer` with: diff path, change dir path, the delta spec paths, the per-task review verdict paths (so it does not redo them), and output path `.bridge/changes/<id>/reviews/final.md`. Point it at the `minor.*` and `ruling.*` entries in state.json. Model: the agent default (strong) when the final package has more than ~600 `changed_lines` or any task was solo for risk. Otherwise pass model override `sonnet` (Claude Code) or the profile's reviewer model (Cursor).
 4. Findings: dispatch ONE `bridge-implementer` with the complete findings list (not one per finding), then one scoped re-review of the fix range.
 5. **Verify→Build loop:** guard plus final review plus fix wave counts as one iteration. Maximum 3; then stop and ask the human.
 6. Report every ruling you made, in order, with its cost if wrong, under "Rulings I made". Then proceed to finish.

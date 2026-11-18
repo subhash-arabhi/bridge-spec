@@ -16,7 +16,7 @@ inside the OpenSpec change, so there is exactly one place to look.
 | Task brief | `.bridge/changes/<id>/briefs/task-<n>.md` | `bridge brief` | What the implementer reads |
 | Implementer report | `.bridge/changes/<id>/reports/task-<n>.md` | implementer subagent | Status + evidence |
 | Review package | `.bridge/changes/<id>/reviews/<base7>..<head7>.diff` | `bridge review-pkg` | What the reviewer reads |
-| Review verdict | `.bridge/changes/<id>/reviews/task-<n>.md` | reviewer subagent | |
+| Review verdict | `.bridge/changes/<id>/reviews/task-<n>.md` or `batch-<first>-<last>.md` | reviewer subagent | |
 | Elephant decision log (T3) | `.bridge/epics/<epic>/elephant.md` | Elephant | Decisions + rejected alternatives |
 | Goldfish reports (T3) | `.bridge/epics/<epic>/reviews/round-<r>/<role>.md` | goldfish subagents | |
 
@@ -29,10 +29,12 @@ inside the OpenSpec change, so there is exactly one place to look.
   - Test: `src/db/sessions.test.ts` — "rejects expired session"
   - Steps: write failing test → run (expect FAIL) → implement → run (expect PASS) → commit
   - Size: mechanical | standard | complex
+  - Risk: low | high
 ```
 
 - Task ids are `<group>.<n>`. `bridge brief` extracts one task (its line + indented lines) plus its group heading.
 - `Size:` drives the implementer model (mechanical → `bridge-mechanic`, standard/complex → `bridge-implementer`).
+- `Size: complex` or `Risk: high` → reviewed on its own; low-risk tasks are reviewed in batches of up to 4 (`bridge review-plan`).
 - Only the controller (main session) ticks `- [x]`, after the reviewer approves.
 
 ## CLI
@@ -43,7 +45,8 @@ All scripted steps go through `bridge` (on PATH; fallback `node ~/.claude/skills
 bridge route '<slot-json>'                 → tier + reason (JSON)
 bridge state <id> [--set k=v ...]          → read/update .bridge/changes/<id>/state.json
 bridge brief <id> <task-id>                → writes briefs/task-<task-id>.md, prints path
-bridge review-pkg <id> <base> [head]       → writes reviews/<base7>..<head7>.diff, prints path
+bridge review-pkg <id> <base> [head] [--final] → lean diff (-U3, no lockfiles; --final also drops tests), prints path + changed_lines
+bridge review-plan <id> [--mode=risk|lean|every-task] → solo vs batched reviews
 bridge guard <open|plan|verify> <id>       → exit 0 = phase may advance; prints failures otherwise
 bridge env-keys                            → env variable NAMES per .env* file (never values)
 bridge doctor                              → install health

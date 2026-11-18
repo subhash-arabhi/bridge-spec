@@ -30,7 +30,8 @@ Before writing tasks, map which files are created or modified and what each is r
   - Files: `db/migrations/20261112_sessions_expiry.sql`, `src/db/sessions.ts`
   - Test: `src/db/sessions.test.ts` — "rejects expired session"
   - Steps: write failing test → run (expect FAIL) → implement → run (expect PASS) → commit
-  - Size: mechanical | standard | complex
+  - Size: mechanical
+  - Risk: low | standard | complex
 ```
 
 - Group headings `## <n>. <name>`; tasks `- [ ] <group>.<n> <title>`; detail lines indented beneath. `bridge brief` extracts exactly one task plus its group heading, so each task must stand alone.
@@ -66,3 +67,6 @@ Then run `bridge guard plan <id>` and fix whatever it reports.
 ## Handoff
 
 Tell the human the plan is at `openspec/changes/<id>/tasks.md`, summarize task count and sizes, and ask them to review it before execution.
+
+## Risk line (drives review cost)
+Add `Risk: high` to tasks that touch auth, secrets, payments, schema or migrations, public API contracts, concurrency, or data deletion. Otherwise use `Risk: low`. High-risk and `Size: complex` tasks get their own review; low-risk tasks are reviewed in batches of up to 4. Mark honestly: under-marking saves tokens but risks bugs, and over-marking wastes tokens.

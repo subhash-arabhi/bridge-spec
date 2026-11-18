@@ -177,24 +177,75 @@ function cmdBrief([id, taskId]) {
 }
 
 // ---------------------------------------------------------------- review package
-function cmdReviewPkg([id, base, head = 'HEAD']) {
+// Never worth reviewer tokens: lockfiles, generated/minified/vendored output, snapshots.
+export const REVIEW_EXCLUDES = [
+  '*.lock', 'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'go.sum', 'Cargo.lock', 'poetry.lock', 'uv.lock', 'Gemfile.lock', 'composer.lock',
+  '*.min.js', '*.min.css', '*.map', '*.snap', 'dist/*', 'build/*', '.next/*', 'coverage/*', 'vendor/*', '*.pb.go', '*_pb2.py', '*.generated.*',
+  'openspec/changes/*', '.bridge/*',
+];
+export const TEST_GLOBS = ['tests/*', 'test/*', '__tests__/*', '*/tests/*', '*/test/*', '*/__tests__/*', 'test_*.py', '*/test_*.py', '*_test.py', '*_test.go', '*.test.*', '*.spec.*', 'conftest.py', '*/conftest.py'];
+const pathspec = (globs) => globs.map((g) => `:(exclude,glob)${g.includes('/') ? '**/' + g.replace(/^\*\//, '') : '**/' + g}`);
+function parseFlags(args) {
+  const flags = {}, pos = [];
+  for (const a of args) { const m = a.match(/^--([a-z-]+)(?:=(.*))?$/); if (m) flags[m[1]] = m[2] ?? true; else pos.push(a); }
+  return { flags, pos };
+}
+// Lean by default: -U3, no lockfiles/generated. --final also drops tests (already reviewed per task).
+function cmdReviewPkg(args) {
+  const { flags, pos } = parseFlags(args);
+  const [id, base, head = 'HEAD'] = pos;
   validId(id);
-  if (!base) die('usage: bridge review-pkg <change-id> <base> [head]', 2);
+  if (!base) die('usage: bridge review-pkg <change-id> <base> [head] [--final] [--context=N] [--all]', 2);
+  const ctx = Number(flags.context ?? 3);
+  const excludes = flags.all ? [] : pathspec(REVIEW_EXCLUDES.concat(flags.final ? TEST_GLOBS : []));
+  return reviewPkg(id, base, head, { ctx, excludes, final: Boolean(flags.final) });
+}
+function reviewPkg(id, base, head, { ctx, excludes, final }) {
   const git = (...a) => sh('git', a);
   for (const r of [base, head]) if (tryRun('git', ['rev-parse', '--verify', '--quiet', `${r}^{commit}`]).status !== 0) die(`bad revision: ${r}`, 2);
   if (tryRun('git', ['merge-base', '--is-ancestor', base, head]).status !== 0) die(`${head} is not a descendant of ${base}`, 3);
   const n = Number(git('rev-list', '--count', `${base}..${head}`));
   if (!n) die(`empty commit range ${base}..${head}`, 3);
   const b7 = git('rev-parse', '--short=7', base), h7 = git('rev-parse', '--short=7', head);
+  const range = `${base}..${head}`;
+  const all = git('diff', '--name-only', range).split('\n').filter(Boolean);
+  const kept = new Set(excludes.length ? git('diff', '--name-only', range, '--', '.', ...excludes).split('\n').filter(Boolean) : all);
+  const omitted = all.filter((f) => !kept.has(f));
   const text = [
-    `# Review package ${b7}..${h7} (${id})`, '',
-    '## Commits', git('log', '--oneline', `${base}..${head}`), '',
-    '## Files changed', git('diff', '--stat', `${base}..${head}`), '',
-    '## Diff', execFileSync('git', ['diff', '-U10', `${base}..${head}`], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }),
+    `# Review package ${b7}..${h7} (${id})${final ? ' — final: tests omitted (reviewed per task)' : ''}`, '',
+    '## Commits', git('log', '--oneline', range), '',
+    '## Files changed (full stat, nothing hidden)', git('diff', '--stat=120', range), '',
+    omitted.length ? `## Omitted from diff (open with git if needed)\n${omitted.map((f) => `- ${f}`).join('\n')}\n` : '',
+    `## Diff (-U${ctx}; open files for more context)`,
+    execFileSync('git', ['diff', `-U${ctx}`, range, '--', '.', ...excludes], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }),
   ].join('\n');
-  const p = path.join(workDir(id, 'reviews'), `${b7}..${h7}.diff`);
+  const p = path.join(workDir(id, 'reviews'), `${final ? 'final-' : ''}${b7}..${h7}.diff`);
   fs.writeFileSync(p, text);
-  out({ package: path.relative(repoRoot(), p), commits: n, bytes: Buffer.byteLength(text) });
+  const changed = (text.match(/^[+-](?![+-])/gm) || []).length;
+  out({ package: path.relative(repoRoot(), p), commits: n, bytes: Buffer.byteLength(text), changed_lines: changed, omitted: omitted.length });
+}
+
+// ---------------------------------------------------------------- review plan (risk-based)
+const RISK_RE = /\b(auth|login|session|token|secret|password|crypt|permission|payment|billing|migration|schema|sql|public api|endpoint|concurren|lock|race|security)\b/i;
+export function reviewPlan(tasks, mode = 'risk', batchSize = 4) {
+  const solo = [], batches = [], skipped = [];
+  let cur = [];
+  const flush = () => { if (cur.length) batches.push(cur); cur = []; };
+  for (const t of tasks) {
+    const body = t.lines.join('\n');
+    const risk = /Risk:\s*high/i.test(body) || (!/Risk:\s*low/i.test(body) && RISK_RE.test(t.title + ' ' + body));
+    if (mode === 'every-task' || t.size === 'complex' || risk) { flush(); solo.push({ id: t.id, why: mode === 'every-task' ? 'every-task' : t.size === 'complex' ? 'complex' : 'risk' }); }
+    else if (mode === 'lean' && t.size === 'mechanical') skipped.push(t.id);
+    else { cur.push(t.id); if (cur.length >= batchSize) flush(); }
+  }
+  flush();
+  return { mode, solo, batches, skipped, reviews: solo.length + batches.length, tasks: tasks.length };
+}
+function cmdReviewPlan(args) {
+  const { flags, pos } = parseFlags(args);
+  validId(pos[0]);
+  const mode = flags.mode || readState(pos[0]).review_mode || 'risk';
+  out(reviewPlan(loadTasks(pos[0]), mode));
 }
 
 // ---------------------------------------------------------------- guards
@@ -509,7 +560,8 @@ const HELP = `bridge <command>
   route '<slot-json>'             decide tier (T0..T3 | resume)
   state <id> [--set k=v ...]      read/update .bridge/changes/<id>/state.json
   brief <id> <task-id>            write a task brief for an implementer subagent
-  review-pkg <id> <base> [head]   write a diff package for a reviewer subagent
+  review-pkg <id> <base> [head] [--final|--context=N|--all]  lean diff package for a reviewer
+  review-plan <id> [--mode=risk|lean|every-task]  which tasks get solo vs per-group review
   guard <open|plan|verify> <id>   scripted phase gate (exit 0 = advance)
   tasks <id>                      list tasks with status/size
   upstream-check                  compare upstream.lock.json with GitHub (monthly sync)
@@ -530,6 +582,7 @@ if (isMain) {
     case 'state': cmdState(args); break;
     case 'brief': cmdBrief(args); break;
     case 'review-pkg': cmdReviewPkg(args); break;
+    case 'review-plan': cmdReviewPlan(args); break;
     case 'guard': cmdGuard(args); break;
     case 'tasks': { validId(args[0]); out(loadTasks(args[0]).map(({ id, done, title, size }) => ({ id, done, title, size }))); break; }
     case 'build': cmdBuild(); break;

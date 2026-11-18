@@ -13,6 +13,6 @@ rules:
     - Every requirement uses SHALL or MUST and has at least one "#### Scenario:" with WHEN/THEN bullets.
     - MODIFIED requirements contain the full new requirement text.
   tasks:
-    - Each task is "- [ ] <group>.<n> <title>" followed by indented "Files:", "Test:", "Steps:", "Size: mechanical|standard|complex" lines.
+    - Each task is "- [ ] <group>.<n> <title>" followed by indented "Files:", "Test:", "Steps:", "Size: mechanical|standard|complex" and "Risk: low|high" lines (high = auth, secrets, payments, schema/migrations, public API, concurrency, data deletion).
     - Each task takes 2-5 minutes and ends with a commit.
     - Every scenario in the delta specs is covered by at least one task's Test line.

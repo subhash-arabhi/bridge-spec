@@ -43,10 +43,10 @@ Never ignore an escalation or retry the same model unchanged.
 
 ### 3. Review (risk-based; reviews are the main token cost)
 
-Before the first task, run `bridge review-plan <id>` (mode from `review_mode` in state: `risk` by default; `lean`; or `every-task` if the user asks). It returns:
+Before the first task, run `bridge review-plan <id>` (mode from `review_mode` in state: `lean` by default; `risk` also reviews mechanical low-risk tasks in batches; `every-task` only if the user asks). It returns:
 - `solo`: tasks with `Size: complex` or `Risk: high` (or risky keywords such as auth, schema, migration, payment, concurrency or public API). Review each one right after it is done.
 - `batches`: up to 4 consecutive low-risk tasks. Do not review them one at a time. When a batch's last task is done, run one review over the batch's range (the first task's base to HEAD), with every brief path in the batch.
-- `skipped` (`lean` mode only): mechanical, low-risk tasks. No per-task review; the final review and the tests cover them.
+- `skipped` (`lean` mode, the default): mechanical, low-risk tasks. No per-task review; the final review and the tests cover them.
 
 Also review a task on its own, regardless of the plan, when the implementer returned DONE_WITH_CONCERNS or the package reports more than ~400 `changed_lines`.
 

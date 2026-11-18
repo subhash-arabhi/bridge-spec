@@ -227,7 +227,7 @@ function reviewPkg(id, base, head, { ctx, excludes, final }) {
 
 // ---------------------------------------------------------------- review plan (risk-based)
 const RISK_RE = /\b(auth|login|session|token|secret|password|crypt|permission|payment|billing|migration|schema|sql|public api|endpoint|concurren|lock|race|security)\b/i;
-export function reviewPlan(tasks, mode = 'risk', batchSize = 4) {
+export function reviewPlan(tasks, mode = 'lean', batchSize = 4) {
   const solo = [], batches = [], skipped = [];
   let cur = [];
   const flush = () => { if (cur.length) batches.push(cur); cur = []; };
@@ -244,7 +244,7 @@ export function reviewPlan(tasks, mode = 'risk', batchSize = 4) {
 function cmdReviewPlan(args) {
   const { flags, pos } = parseFlags(args);
   validId(pos[0]);
-  const mode = flags.mode || readState(pos[0]).review_mode || 'risk';
+  const mode = flags.mode || readState(pos[0]).review_mode || 'lean';
   out(reviewPlan(loadTasks(pos[0]), mode));
 }
 
@@ -561,7 +561,7 @@ const HELP = `bridge <command>
   state <id> [--set k=v ...]      read/update .bridge/changes/<id>/state.json
   brief <id> <task-id>            write a task brief for an implementer subagent
   review-pkg <id> <base> [head] [--final|--context=N|--all]  lean diff package for a reviewer
-  review-plan <id> [--mode=risk|lean|every-task]  which tasks get solo vs per-group review
+  review-plan <id> [--mode=lean|risk|every-task]  solo / batched / skipped reviews (default lean)
   guard <open|plan|verify> <id>   scripted phase gate (exit 0 = advance)
   tasks <id>                      list tasks with status/size
   upstream-check                  compare upstream.lock.json with GitHub (monthly sync)

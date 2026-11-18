@@ -22,5 +22,5 @@ Cost rules:
 - Prefer `bridge-mechanic` whenever the task text already contains the exact code and test.
 - Use `bridge-explorer` instead of reading many files in the main session; ask it for paths and a ≤300-word map.
 - Do not run reviewers on T0/T1 work.
-- Reviews are the largest cost in T2. Follow `bridge review-plan` (solo reviews only for complex or high-risk tasks; batches for the rest), use lean packages, and run the final review on the strong model only for large or risky changes. `review_mode=lean` (`bridge state <id> --set review_mode=lean`) also skips per-task review of mechanical low-risk tasks.
+- Reviews are the largest cost in T2. Follow `bridge review-plan` (solo reviews only for complex or high-risk tasks; batches for the rest), use lean packages, and run the final review on the strong model only for large or risky changes. The default `lean` mode skips per-task review of mechanical low-risk tasks, leaving them to the tests and the final review. For stricter review, use `bridge state <id> --set review_mode=risk` (or `every-task`).
 - If the session model is already the strong model, still dispatch implementers on their configured models.

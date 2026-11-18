@@ -169,11 +169,13 @@ test('reviewPlan: complex/high-risk solo, low-risk batched by 4, lean skips mech
     '1.5': 'Size: standard\n  - Risk: low', '1.6': 'Size: standard\n  - Risk: low', '1.7': 'Size: standard\n  - Risk: low', '1.8': 'Size: standard\n  - Risk: high' };
   for (const [id, b] of Object.entries(spec)) md.push(`- [ ] ${id} task ${id}\n  - Files: a\n  - Test: t\n  - ${b}`);
   const tasks = parseTasks(md.join('\n'));
-  const r = reviewPlan(tasks);
+  const r = reviewPlan(tasks, 'risk');
   assert.deepEqual(r.solo.map((s) => s.id), ['1.2', '1.8']);
   assert.deepEqual(r.batches, [['1.1'], ['1.3', '1.4', '1.5', '1.6'], ['1.7']]);
   assert.equal(r.reviews, 5);
   assert.deepEqual(reviewPlan(tasks, 'lean').skipped, ['1.1', '1.4']);
+  assert.equal(reviewPlan(tasks).mode, 'lean', 'lean is the default');
+  assert.equal(reviewPlan(tasks).reviews, 4);
   assert.equal(reviewPlan(tasks, 'every-task').reviews, 8);
   assert.equal(reviewPlan(parseTasks('## 1. G\n- [ ] 1.1 add login session check\n  - Size: standard')).solo[0].why, 'risk', 'keyword risk without Risk line');
 });

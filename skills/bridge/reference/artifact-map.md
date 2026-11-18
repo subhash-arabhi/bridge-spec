@@ -46,7 +46,7 @@ bridge route '<slot-json>'                 → tier + reason (JSON)
 bridge state <id> [--set k=v ...]          → read/update .bridge/changes/<id>/state.json
 bridge brief <id> <task-id>                → writes briefs/task-<task-id>.md, prints path
 bridge review-pkg <id> <base> [head] [--final] → lean diff (-U3, no lockfiles; --final also drops tests), prints path + changed_lines
-bridge review-plan <id> [--mode=risk|lean|every-task] → solo vs batched reviews
+bridge review-plan <id> [--mode=lean|risk|every-task] → solo / batched / skipped reviews (default lean)
 bridge guard <open|plan|verify> <id>       → exit 0 = phase may advance; prints failures otherwise
 bridge env-keys                            → env variable NAMES per .env* file (never values)
 bridge doctor                              → install health

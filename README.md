@@ -50,3 +50,6 @@ A scheduled cloud routine runs `bridge-sync`. `bridge upstream-check` compares t
 - OpenSpec by Fission AI. The bridge uses its CLI.
 
 Design ideas (not code) are from rpamis/comet `comet-classic`: script-decided routing, scripted phase guards, per-change state, path-only subagent handoffs.
+
+## License
+MIT. See [LICENSE](LICENSE). Vendored content keeps its upstream license: `skills/bridge/vendor/superpowers/` is MIT (Jesse Vincent) and `skills/bridge/vendor/egm/` is Apache-2.0 (Google). Each folder has its own LICENSE and ATTRIBUTION.md.

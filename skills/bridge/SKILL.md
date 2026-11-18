@@ -7,7 +7,7 @@ description: Engineering workflow router for coding work that is bigger than a q
 
 OpenSpec owns **WHAT** (living requirements, delta specs, archive). Superpowers-derived steps own **HOW** (bounded brainstorming, strict TDD, isolated implementer/reviewer subagents). Elephant-Goldfish (EGM) owns **very large design**. All paths are in `reference/artifact-map.md`. CLI: `bridge` (fallback `node ~/.claude/skills/bridge/bin/bridge.mjs`).
 
-Token rule: read only the files named for the tier you are on, and only when you reach that step. Hand subagents file paths, never conversation history.
+Token rule: read only the files named for the tier you are on, and only when you reach that step. Hand subagents file paths, never conversation history. Workflow settings (`bridge workflow`, from `config/workflow.json`) decide execution mode, slice size, review mode, design depth and approval gates. Follow them rather than older habits.
 
 ## 0. Repo context
 If `ARCHITECTURE.md` exists at the repo root, read it before exploring the code. If it is missing and the work is T1 or larger, dispatch `bridge-cartographer` (mode `create`) first. Rules and when to update it: `reference/architecture-doc.md`.
@@ -37,7 +37,8 @@ Run `bridge route '<frame>'`. The script decides. Tell the user the tier and rea
 |---|---|---|
 | T0 | nothing | Edit, run existing checks, done. |
 | T1 | `reference/tier-0-1-light.md` | TDD-lite, root cause for bugs, evidence before "done". |
-| T2 | `reference/tier-2-requirement.md` | Open → Design → Plan → Build → Verify → Archive. |
+| T2-lite | `reference/tier-2-requirement.md` | Small requirement: minimal proposal + specs, inline build, one final review. |
+| T2 | `reference/tier-2-requirement.md` | Open → Clarify (one gate) → Plan slices → Build (native) → Verify → Archive. |
 | T3 | `reference/tier-3-epic.md` | Elephant design → goldfish review → split into T2 changes. |
 | resume | `reference/recovery.md` | Continue from `.bridge/changes/<id>/state.json`. |
 

@@ -6,6 +6,8 @@ One global skill for **Claude Code and Cursor** that applies engineering discipl
 - **Superpowers** methods (vendored, trimmed) decide **HOW**: bounded brainstorming, strict TDD, isolated implementer and reviewer subagents.
 - **Elephant-Goldfish** (vendored, trimmed) handles **very large design**: a long-context elephant designs, and fresh-context goldfish review.
 - **ARCHITECTURE.md** in every repo is the one file a fresh agent reads first: structure, design, run commands, published resources, and env variable names (never values). A Haiku-sized `bridge-cartographer` agent creates and updates it.
+- **Settings, not rewrites:** `config/workflow.json` sets execution (`native`: the main session builds vertical slices, and subagents only run parallel slices and reviews), slice size, review mode, design depth and approval gates. Change the settings as models improve.
+- **Minimal OpenSpec:** a ≤ 20-line proposal, one-line requirements with 1–2 scenarios, design.md only when needed, and briefs that quote only the matching requirements. Small requirements route to **T2-lite**.
 - **Lean reviews by default:** complex or high-risk tasks get their own review, other non-mechanical tasks are reviewed in batches of up to 4, and mechanical low-risk tasks rely on the tests and the final review. Diff packages use 3 lines of context and leave out lockfiles; the final review also leaves out tests. Switch with `bridge state <id> --set review_mode=risk|every-task`.
 - **Tiers** keep small work cheap: T0 trivial · T1 small (TDD-lite) · T2 requirement (full pipeline) · T3 epic (EGM, then N T2 changes). `bridge route` decides from a slot frame.
 - **Per-role models** via subagents, applied whatever model the session runs on. Edit them in `config/models.json`.

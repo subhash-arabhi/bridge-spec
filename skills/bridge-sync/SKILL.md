@@ -42,4 +42,5 @@ For `ideas`: in the comet clone, read the commit log and README or SKILL.md diff
    - **Bridge rewrites**: per file, what changed and why.
    - **Breaking for users?**: yes/no, plus what to run after merging: `git pull && bridge install && bridge doctor`, and an `npm i -g --prefix ~/.local @fission-ai/openspec@<v>` line if the CLI version moved.
    - **comet ideas** (if any).
+   - **Workflow settings**: whether any `config/workflow.json` setting should change, given upstream changes or what comet's measurements show (for example a larger slice size or fewer reviews as models improve). Propose it; do not flip it silently.
    - **Test output**: the summary lines.

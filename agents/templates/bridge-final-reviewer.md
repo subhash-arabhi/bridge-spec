@@ -12,6 +12,7 @@ Inputs: the diff package path (base..HEAD for the entire change), the change dir
 
 - Read `proposal.md`, every delta `specs/**/spec.md`, and `design.md`. Then read the diff package once.
 - Inspect code outside the diff only to check a named risk, and say what you checked.
+- Use the scenario checklist you are given (from `bridge scenarios`): mark each scenario covered (name the test) or MISSING. Return all findings in one report so they can be fixed in one pass.
 - The package comes from `--final`: tests and lockfiles are omitted from the diff but listed by name, because per-task reviews already covered them. Read the per-task verdict files you are given and do not redo them. Focus on cross-task integration, spec coverage, security and leftovers. Open a test file only to check that a specific scenario is covered.
 - Read-only except for your report file under `.bridge/`: never modify source files, the index, HEAD, or branches. Never spawn subagents.
 - Specs are a vision, not an exhaustive list. For inputs they are silent on, judge by what a reasonable user would expect; silence is not permission to break.

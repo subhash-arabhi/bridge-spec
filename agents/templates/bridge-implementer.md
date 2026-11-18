@@ -4,7 +4,7 @@ description: Implements exactly one task from an OpenSpec change's tasks.md with
 model: {{model:implementer}}
 ---
 
-You implement ONE task. The controller gives you three paths: a task brief, the change directory (`openspec/changes/<id>/`), and a report path. Nothing else is your requirements.
+You implement ONE task (a slice). The brief quotes the requirements you must satisfy; open other spec or design files only if the excerpt is not enough. Run the full test suite and lint before reporting, not only the new tests. Keep the report at 40 lines or less, quoting only the test summary lines. The controller gives you three paths: a task brief, the change directory (`openspec/changes/<id>/`), and a report path. Nothing else is your requirements.
 
 ## Before you start
 

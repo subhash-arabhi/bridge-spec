@@ -24,7 +24,9 @@ const CASES = [
   ['unflagged frame defaults to T1, never T0', {}, 'T1'],
   ['new API endpoint (single file still T2)', { new_capability: true, public_api_change: true, est_files: 1 }, 'T2'],
   ['add DB column', { schema_change: true }, 'T2'],
-  ['user pastes a requirement/ticket', { explicit_requirement: true, existing_behavior: true }, 'T2'],
+  ['user pastes a requirement/ticket (small) → T2-lite', { explicit_requirement: true, existing_behavior: true }, 'T2-lite'],
+  ['new page in one module → T2-lite', { new_capability: true, est_files: 3 }, 'T2-lite'],
+  ['new capability across 8 files → T2', { new_capability: true, est_files: 8 }, 'T2'],
   ['cross-module change', { cross_module: true, existing_behavior: true }, 'T2'],
   ['vague feature request', { ambiguity: 'high' }, 'T2'],
   ['redesign workflow engine', { architecture: true }, 'T3'],
@@ -105,7 +107,7 @@ test('fixture: full T2 lifecycle with OpenSpec', { skip: !hasOpenspec && 'opensp
   const brief = JSON.parse(run(d, 'brief', 'add-greeting', '1.1').stdout);
   assert.equal(brief.agent, 'bridge-mechanic');
   const btxt = fs.readFileSync(path.join(d, brief.brief), 'utf8');
-  assert.match(btxt, /specs\/greeting\/spec\.md/); assert.match(btxt, /Add greet\(\)/);
+  assert.match(btxt, /### Requirement: Greet by name/, 'brief excerpts the matched requirement'); assert.match(btxt, /Add greet\(\)/);
 
   fs.writeFileSync(path.join(d, 'greet.js'), 'export const greet = (n) => `Hello, ${n}!`;\n');
   git(d, 'add', 'greet.js'); git(d, 'commit', '-qm', 'greet');
@@ -199,4 +201,15 @@ test('review-pkg: lean context, lockfiles omitted, --final drops tests', () => {
   const ft = fs.readFileSync(path.join(d, f.package), 'utf8');
   assert.match(ft, /Omitted[\s\S]*tests\/test_a\.py/); assert.doesNotMatch(ft, /def test_a/); assert.match(ft, /x20 = 99/);
   fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('brief helpers: requirement match by Spec line or scenario name; design excerpt', async () => {
+  const { parseDeltaSpecs, matchRequirements, designSections, waves } = await import('../skills/bridge/bin/bridge.mjs');
+  const reqs = parseDeltaSpecs([{ capability: 'auth', text: '## ADDED Requirements\n\n### Requirement: Session expiry\nThe system SHALL expire.\n\n#### Scenario: Expired session rejected\n- **WHEN** x\n- **THEN** y\n\n### Requirement: Login rate limit\nThe system SHALL limit.\n\n#### Scenario: Sixth attempt blocked\n- **WHEN** a\n- **THEN** b\n' }]);
+  assert.deepEqual(reqs.map((r) => [r.name, r.scenarios.length]), [['Session expiry', 1], ['Login rate limit', 1]]);
+  const [t1, t2, t3] = parseTasks('## 1. G\n- [ ] 1.1 expiry\n  - Files: `a.ts`\n  - Spec: Session expiry\n  - Test: t\n- [ ] 1.2 limit\n  - Files: `b.ts`\n  - Test: `b.test.ts` — Sixth attempt blocked\n- [ ] 1.3 wire\n  - Files: `a.ts`, `c.ts`\n  - Depends: 1.2\n  - Test: t');
+  assert.deepEqual(matchRequirements(t1, reqs).map((r) => r.name), ['Session expiry']);
+  assert.deepEqual(matchRequirements(t2, reqs).map((r) => r.name), ['Login rate limit']);
+  assert.equal(designSections('# D\n## Storage\nuse redis\n### Keys\nk\n## API\nrest\n', ['Storage'])[0], '## Storage\nuse redis\n### Keys\nk');
+  assert.deepEqual(waves([t1, t2, t3]), [['1.1', '1.2'], ['1.3']], 'disjoint files run together; shared file + dependency wait');
 });

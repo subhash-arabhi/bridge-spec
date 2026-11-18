@@ -8,7 +8,7 @@ inside the OpenSpec change, so there is exactly one place to look.
 | Living requirements | `openspec/specs/<capability>/spec.md` | `openspec archive` only | Never hand-edit during a change |
 | Change proposal (goal, scope) | `openspec/changes/<id>/proposal.md` | Open phase | Needs `## Why` and `## What Changes` |
 | Delta specs (behavior, acceptance) | `openspec/changes/<id>/specs/<capability>/spec.md` | Open phase | `## ADDED/MODIFIED/REMOVED/RENAMED Requirements`; each `### Requirement:` has SHALL/MUST + ≥1 `#### Scenario:` with `- **WHEN**` / `- **THEN**` |
-| Technical design (brainstorm output) | `openspec/changes/<id>/design.md` | Design phase | Replaces Superpowers `docs/superpowers/specs/*` |
+| Technical design (only when needed) | `openspec/changes/<id>/design.md`, else `## Approach` in proposal.md | Clarify step | ≤ ~80 lines; `design=auto` decides |
 | Implementation plan + completion record | `openspec/changes/<id>/tasks.md` | Plan phase; ticked only by the controller | Replaces Superpowers `docs/superpowers/plans/*` |
 | Repo context for fresh agents | `ARCHITECTURE.md` (repo root) | `bridge-cartographer` | Structure, design, run commands, published resources, env variable **names**; see `architecture-doc.md` |
 | Epic design doc (T3) | `docs/designs/<epic>.md` | Elephant | Living architecture doc, linked from each child proposal |
@@ -20,22 +20,23 @@ inside the OpenSpec change, so there is exactly one place to look.
 | Elephant decision log (T3) | `.bridge/epics/<epic>/elephant.md` | Elephant | Decisions + rejected alternatives |
 | Goldfish reports (T3) | `.bridge/epics/<epic>/reviews/round-<r>/<role>.md` | goldfish subagents | |
 
-## tasks.md format (OpenSpec-compatible checkboxes + bridge detail lines)
+## tasks.md format (vertical slices, ≤ 6 detail lines)
 
 ```markdown
-## 1. Storage layer
-- [ ] 1.1 Add `expires_at` column to sessions table
-  - Files: `db/migrations/20261112_sessions_expiry.sql`, `src/db/sessions.ts`
-  - Test: `src/db/sessions.test.ts` — "rejects expired session"
-  - Steps: write failing test → run (expect FAIL) → implement → run (expect PASS) → commit
-  - Size: mechanical | standard | complex
-  - Risk: low | high
+## 1. Session expiry
+- [ ] 1.1 Reject expired sessions end to end
+  - Files: `db/migrations/20261112_expiry.sql`, `src/db/sessions.ts`
+  - Spec: Session expiry; Expired session rejected
+  - Test: `src/api/auth.test.ts` — "rejects expired session"
+  - Size: standard
+  - Risk: high
+  - Depends: 1.0   (optional)
 ```
 
-- Task ids are `<group>.<n>`. `bridge brief` extracts one task (its line + indented lines) plus its group heading.
-- `Size:` drives the implementer model (mechanical → `bridge-mechanic`, standard/complex → `bridge-implementer`).
-- `Size: complex` or `Risk: high` → reviewed on its own; low-risk tasks are reviewed in batches of up to 4 (`bridge review-plan`).
-- Only the controller (main session) ticks `- [x]`, after the reviewer approves.
+- Ids are `<group>.<n>`. `bridge brief` extracts one slice and quotes the requirements named in Spec (or matched by scenario names in Test), plus optional `Design:` sections.
+- `Files` drive the parallel waves (`bridge waves`). `Size: mechanical` can go to `bridge-mechanic`.
+- `Size: complex` or `Risk: high` → reviewed on its own; everything else relies on tests and the final review (`review_mode=lean`).
+- Only the controller ticks `- [x]`.
 
 ## CLI
 
@@ -49,5 +50,8 @@ bridge review-pkg <id> <base> [head] [--final] → lean diff (-U3, no lockfiles;
 bridge review-plan <id> [--mode=lean|risk|every-task] → solo / batched / skipped reviews (default lean)
 bridge guard <open|plan|verify> <id>       → exit 0 = phase may advance; prints failures otherwise
 bridge env-keys                            → env variable NAMES per .env* file (never values)
+bridge scenarios <id>                      → scenario coverage checklist for the final review
+bridge waves <id>                          → parallel waves of open slices
+bridge workflow                            → effective workflow settings
 bridge doctor                              → install health
 ```

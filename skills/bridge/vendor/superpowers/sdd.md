@@ -1,5 +1,7 @@
 # Subagent-Driven Development (controller)
 
+Used only with `execution=delegated` (very large changes or weaker models). With the default `execution=native`, follow the Build step in tier-2-requirement.md instead.
+
 You are the controller. Execute `openspec/changes/<id>/tasks.md` by dispatching a fresh implementer per task, a reviewer after each, and a final reviewer at the end. You coordinate; you never write product code or fix findings yourself (that pollutes your context and skips review).
 
 Hand everything over as files. Whatever you paste into a dispatch, or a subagent prints back, stays in your context for the rest of the session. Narrate at most one line between tool calls.
@@ -11,7 +13,8 @@ Hand everything over as files. Whatever you paste into a dispatch, or a subagent
 1. Confirm the workspace (see worktree-and-finish.md). Never implement on main/master without the human's consent.
 2. Check `bridge state <id>`. If it shows progress, go to Resume.
 3. Record BASE: `git rev-parse HEAD`, then `bridge state <id> --set base=<sha>`.
-4. Read tasks.md, proposal.md, design.md, and the delta spec paths once. The delta specs are the binding authority.
+4. Read tasks.md once. Briefs quote the matching requirements, so read proposal, design and specs only for the preflight below. The delta specs are the binding authority.
+   With `parallel=true`, use `bridge waves <id>`: dispatch the implementers of one wave together (disjoint files), and review per the review plan after the wave.
 5. Preflight scan, once: for every pair of tasks sharing a file or interface, check what one produces against what the other consumes; for every task, check its test against its code and files. Rule on each conflict (specs win), and record each ruling as `bridge state <id> --set ruling.<n>="<decision> — <why> — <cost if wrong>"`. Clean scan: proceed without comment.
 
 ## Per task
@@ -77,7 +80,7 @@ Only after approval: tick `- [x] <n>` in tasks.md, `bridge state <id> --set task
 
 1. `bridge guard verify <id>`. Fix what it reports via a fix dispatch, not by hand.
 2. `bridge review-pkg <id> <base> HEAD --final` (base from state). This drops tests and lockfiles, which per-task reviews already covered; their names stay in the file list.
-3. Dispatch `bridge-final-reviewer` with: diff path, change dir path, the delta spec paths, the per-task review verdict paths (so it does not redo them), and output path `.bridge/changes/<id>/reviews/final.md`. Point it at the `minor.*` and `ruling.*` entries in state.json. Model: the agent default (strong) when the final package has more than ~600 `changed_lines` or any task was solo for risk. Otherwise pass model override `sonnet` (Claude Code) or the profile's reviewer model (Cursor).
+3. Run `bridge scenarios <id>`. Dispatch `bridge-final-reviewer` with: diff path, the scenario checklist path, change dir path, the per-task review verdict paths (so it does not redo them), and output path `.bridge/changes/<id>/reviews/final.md`. Point it at the `minor.*` and `ruling.*` entries in state.json. Model: the agent default (strong) when the final package has more than ~600 `changed_lines` or any task was solo for risk. Otherwise pass model override `sonnet` (Claude Code) or the profile's reviewer model (Cursor).
 4. Findings: dispatch ONE `bridge-implementer` with the complete findings list (not one per finding), then one scoped re-review of the fix range.
 5. **Verify→Build loop:** guard plus final review plus fix wave counts as one iteration. Maximum 3; then stop and ask the human.
 6. Report every ruling you made, in order, with its cost if wrong, under "Rulings I made". Then proceed to finish.

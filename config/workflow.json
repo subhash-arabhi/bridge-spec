@@ -1,0 +1,20 @@
+{
+  "_note": [
+    "Workflow settings. Change these instead of rewriting the skill as models improve; the monthly sync may propose new values.",
+    "A repo can override any key in .bridge/config.json (gitignored).",
+    "execution: native = the main session builds slices itself (subagents for parallel slices, risky reviews and the final review); delegated = one implementer subagent per task (for huge changes or weaker models).",
+    "task_size: slice = 15-30 minute vertical slices; micro = 2-5 minute steps.",
+    "design: auto = design.md only for risky, large or cross-module changes, otherwise a short Approach section in proposal.md; always; never.",
+    "gates: combined = one approval for proposal, scenarios and approach; separate = approve proposal, then design.",
+    "brainstorm_rounds: maximum question rounds; 0 = when the request is clear, state assumptions instead of asking.",
+    "doc_caps: soft line limits; the guards warn when they are exceeded."
+  ],
+  "execution": "native",
+  "task_size": "slice",
+  "review_mode": "lean",
+  "design": "auto",
+  "gates": "combined",
+  "brainstorm_rounds": 1,
+  "parallel": true,
+  "doc_caps": { "proposal_lines": 20, "design_lines": 80, "task_lines": 6, "report_lines": 40, "requirement_scenarios": 2 }
+}

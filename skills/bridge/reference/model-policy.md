@@ -1,6 +1,6 @@
 # Model policy
 
-The session model (whatever the user picked) does routing, brainstorming dialogue, the elephant role and controller work. Delegated work runs on the model set in each agent's frontmatter (generated from `config/models.json` in the bridge repo):
+The session model (whatever the user picked) does routing, brainstorming dialogue, the elephant role and, with `execution=native` (the default), the building itself. Subagents handle parallel slices, risky-slice reviews, the final review, recon and ARCHITECTURE.md. Delegated work runs on the model set in each agent's frontmatter (generated from `config/models.json` in the bridge repo):
 
 | Agent | Claude Code | Cursor `anthropic` (default) | Cursor `openai` | Used for |
 |---|---|---|---|---|

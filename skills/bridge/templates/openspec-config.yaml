@@ -8,11 +8,12 @@ context: |
 
 rules:
   proposal:
-    - State what is out of scope.
+    - Keep it under 20 lines - Why (2-3 lines), What Changes (bullets plus an out-of-scope line), and an optional Approach (3-8 lines).
   specs:
-    - Every requirement uses SHALL or MUST and has at least one "#### Scenario:" with WHEN/THEN bullets.
+    - One SHALL or MUST sentence per requirement, with 1-2 "#### Scenario:" blocks (WHEN/THEN bullets). No prose sections.
     - MODIFIED requirements contain the full new requirement text.
+  design:
+    - Write it only for schema, public API, security, concurrency, cross-module changes, or more than 3 slices. Keep it under 80 lines.
   tasks:
-    - Each task is "- [ ] <group>.<n> <title>" followed by indented "Files:", "Test:", "Steps:", "Size: mechanical|standard|complex" and "Risk: low|high" lines (high = auth, secrets, payments, schema/migrations, public API, concurrency, data deletion).
-    - Each task takes 2-5 minutes and ends with a commit.
-    - Every scenario in the delta specs is covered by at least one task's Test line.
+    - Write vertical slices of 15-30 minutes each - "- [ ] <group>.<n> <title>", then at most 6 indented lines - Files, Spec, Test, Size, Risk, and Depends if needed.
+    - No step-by-step recipes or code bodies. Every scenario appears in some slice's Spec or Test line.

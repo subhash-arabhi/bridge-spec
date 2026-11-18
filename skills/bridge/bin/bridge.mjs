@@ -55,9 +55,25 @@ export function route(f = {}) {
   }
   const load = ['reference/tier-0-1-light.md', 'reference/tier-0-1-light.md', 'reference/tier-2-requirement.md', 'reference/tier-3-epic.md'][tier];
   const res = { tier: `T${tier}`, reasons, load };
+  // Small requirement: one module, no API/schema/cross-module risk -> minimal docs, inline build, one final review.
+  if (tier === 2 && !(ov in map) && !f.public_api_change && !f.schema_change && !f.cross_module && !f.multi_capability
+      && (f.ambiguity || 'low') !== 'high' && (f.est_files ?? 1) <= 5) {
+    res.tier = 'T2-lite'; reasons.push('small: one module, no API/schema/cross-module change');
+  }
   if (tier <= 1 && f.touches_specced_requirement) { res.spec_delta = true; reasons.push('alters an existing spec requirement: add a minimal OpenSpec delta + archive'); }
   if (tier === 0) res.load = null;
   return res;
+}
+
+// ---------------------------------------------------------------- workflow settings
+export function workflow(root = null) {
+  const base = JSON.parse(fs.readFileSync(path.join(REPO_DIR, 'config', 'workflow.json'), 'utf8'));
+  delete base._note;
+  let local = {};
+  try { const c = JSON.parse(fs.readFileSync(path.join(root ?? repoRoot(), '.bridge', 'config.json'), 'utf8')); local = c; } catch {}
+  const merged = { ...base, ...local, doc_caps: { ...base.doc_caps, ...(local.doc_caps || {}) } };
+  delete merged.test_cmd;
+  return merged;
 }
 
 // ---------------------------------------------------------------- state
@@ -131,6 +147,12 @@ export function parseTasks(text) {
     t.size = (body.match(/Size:\s*(mechanical|standard|complex)/i) || [])[1]?.toLowerCase() || null;
     t.hasFiles = /Files:/i.test(body);
     t.hasTest = /Test:/i.test(body);
+    const field = (k) => (body.match(new RegExp(`^\\s*-\\s*${k}:\\s*(.+)$`, 'im')) || [])[1] || '';
+    t.files = field('Files').split(/[,;]/).map((x) => x.replace(/[`\s]|\(.*?\)|:\d.*$/g, '')).filter(Boolean);
+    t.specRefs = field('Spec').split(/[;,]/).map((x) => x.trim()).filter(Boolean);
+    t.designRefs = field('Design').split(/[;,]/).map((x) => x.trim().replace(/^#+\s*/, '')).filter(Boolean);
+    t.depends = field('Depends').split(/[,;\s]+/).filter((x) => /^\d+(\.\d+)*$/.test(x));
+    t.testText = field('Test');
   }
   return tasks;
 }
@@ -145,6 +167,44 @@ function listSpecs(id) {
   return fs.readdirSync(dir, { recursive: true }).filter((f) => f.endsWith('.md')).map((f) => path.join('openspec/changes', id, 'specs', f));
 }
 
+// Requirement blocks from delta specs: { capability, op, name, text, scenarios[] }
+export function parseDeltaSpecs(files) {
+  const reqs = [];
+  for (const { capability, text } of files) {
+    let op = null, cur = null;
+    for (const line of text.split('\n')) {
+      const h2 = line.match(/^##\s+(ADDED|MODIFIED|REMOVED|RENAMED)\s+Requirements/i);
+      if (h2) { op = h2[1].toUpperCase(); cur = null; continue; }
+      const r = line.match(/^###\s+Requirement:\s*(.+)$/);
+      if (r) { cur = { capability, op, name: r[1].trim(), lines: [line], scenarios: [] }; reqs.push(cur); continue; }
+      if (/^##\s/.test(line)) { cur = null; continue; }
+      if (cur) { cur.lines.push(line); const sc = line.match(/^####\s+Scenario:\s*(.+)$/); if (sc) cur.scenarios.push(sc[1].trim()); }
+    }
+  }
+  return reqs.map((r) => ({ ...r, text: r.lines.join('\n').trim() }));
+}
+function loadDeltaSpecs(id) {
+  return listSpecs(id).map((rel) => ({ capability: rel.split('/').slice(-2, -1)[0], text: fs.readFileSync(path.join(repoRoot(), rel), 'utf8') }));
+}
+const norm = (x) => x.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+export function matchRequirements(task, reqs) {
+  const refs = task.specRefs.map((r) => norm(r.split('/').pop()));
+  const test = norm(task.testText + ' ' + task.title);
+  return reqs.filter((r) => refs.includes(norm(r.name)) || r.scenarios.some((s) => test.includes(norm(s))));
+}
+export function designSections(text, names) {
+  if (!text || !names.length) return [];
+  const out = []; const lines = text.split('\n');
+  for (const n of names) {
+    const i = lines.findIndex((l) => /^#{2,4}\s/.test(l) && norm(l.replace(/^#+/, '')) === norm(n));
+    if (i < 0) continue;
+    const lvl = lines[i].match(/^#+/)[0].length; let j = i + 1;
+    while (j < lines.length && !(new RegExp(`^#{1,${lvl}}\\s`).test(lines[j]))) j++;
+    out.push(lines.slice(i, j).join('\n').trim());
+  }
+  return out;
+}
+
 function cmdBrief([id, taskId]) {
   validId(id);
   if (!taskId) die('usage: bridge brief <change-id> <task-id>', 2);
@@ -153,18 +213,24 @@ function cmdBrief([id, taskId]) {
   if (!t) die(`task ${taskId} not found in tasks.md; ids: ${tasks.map((x) => x.id).join(', ') || '(none)'}`, 3);
   const rel = (p) => path.relative(repoRoot(), p);
   const report = path.join(workDir(id, 'reports'), `task-${taskId}.md`);
-  const read = ['proposal.md', 'design.md'].map((f) => path.join('openspec/changes', id, f)).filter((f) => fs.existsSync(path.join(repoRoot(), f)));
+  const reqs = parseDeltaSpecs(loadDeltaSpecs(id));
+  const hit = matchRequirements(t, reqs);
+  const designPath = path.join(changeDir(id), 'design.md');
+  const dsec = designSections(fs.existsSync(designPath) ? fs.readFileSync(designPath, 'utf8') : '', t.designRefs);
   const body = [
     `# Task ${t.id}: ${t.title}`,
     '',
-    `Change: \`${id}\` — group: ${t.group ?? '(none)'}`,
-    `Size: ${t.size ?? 'standard'}`,
-    '',
-    '## Read first (only these)',
-    ...[...read, ...listSpecs(id)].map((f) => `- \`${f}\``),
+    `Change: \`${id}\` — group: ${t.group ?? '(none)'} — Size: ${t.size ?? 'standard'}`,
     '',
     '## Task',
     t.lines.join('\n'),
+    '',
+    '## Requirements this task must satisfy (excerpt; binding)',
+    hit.length ? hit.map((r) => `<!-- ${r.capability} · ${r.op} -->\n${r.text}`).join('\n\n')
+      : `No requirement matched this task's Spec/Test lines. Titles in this change: ${reqs.map((r) => r.name).join('; ') || '(none)'}. Open \`openspec/changes/${id}/specs/\` only if you need one.`,
+    ...(dsec.length ? ['', '## Design excerpt', dsec.join('\n\n')] : []),
+    '',
+    `Full context, only if the excerpt is not enough: \`openspec/changes/${id}/\` (proposal.md, design.md, specs/).`,
     '',
     '## Report',
     `Write your report to \`${rel(report)}\` (Status: DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED).`,
@@ -173,8 +239,39 @@ function cmdBrief([id, taskId]) {
   ].join('\n');
   const p = path.join(workDir(id, 'briefs'), `task-${taskId}.md`);
   fs.writeFileSync(p, body);
-  out({ brief: rel(p), report: rel(report), size: t.size ?? 'standard', agent: t.size === 'mechanical' ? 'bridge-mechanic' : 'bridge-implementer' });
+  out({ brief: rel(p), report: rel(report), size: t.size ?? 'standard', agent: t.size === 'mechanical' ? 'bridge-mechanic' : 'bridge-implementer', requirements: hit.map((r) => r.name), bytes: Buffer.byteLength(body) });
 }
+
+// ---------------------------------------------------------------- scenarios checklist / parallel waves
+function cmdScenarios([id]) {
+  validId(id);
+  const reqs = parseDeltaSpecs(loadDeltaSpecs(id)).filter((r) => r.op !== 'REMOVED');
+  const tasks = fs.existsSync(path.join(changeDir(id), 'tasks.md')) ? loadTasks(id) : [];
+  const lines = [`# Scenario checklist: ${id}`, '', 'Final reviewer: mark each scenario covered (test name) or MISSING.', ''];
+  for (const r of reqs) {
+    lines.push(`## ${r.capability} · ${r.name}`);
+    for (const sc of r.scenarios.length ? r.scenarios : ['(no scenario)']) {
+      const owner = tasks.filter((t) => matchRequirements(t, [r]).length).map((t) => t.id);
+      lines.push(`- [ ] ${sc}${owner.length ? ` (planned in ${owner.join(', ')})` : ' (no planned task!)'}`);
+    }
+  }
+  const p = path.join(workDir(id), 'scenarios.md');
+  fs.writeFileSync(p, lines.join('\n') + '\n');
+  out({ checklist: path.relative(repoRoot(), p), requirements: reqs.length, scenarios: reqs.reduce((n, r) => n + Math.max(1, r.scenarios.length), 0) });
+}
+// Waves of open tasks that can run in parallel: disjoint Files, dependencies in earlier waves.
+export function waves(tasks) {
+  const open = tasks.filter((t) => !t.done);
+  const waveOf = {}; const res = [];
+  for (const t of open) {
+    const depWave = Math.max(-1, ...t.depends.map((d) => waveOf[d] ?? -1));
+    let w = depWave + 1;
+    while (res[w] && res[w].some((o) => o.files.some((f) => t.files.includes(f)) || !t.files.length || !o.files.length)) w++;
+    (res[w] ??= []).push(t); waveOf[t.id] = w;
+  }
+  return res.map((w) => w.map((t) => t.id));
+}
+function cmdWaves([id]) { validId(id); out({ waves: waves(loadTasks(id)) }); }
 
 // ---------------------------------------------------------------- review package
 // Never worth reviewer tokens: lockfiles, generated/minified/vendored output, snapshots.
@@ -244,7 +341,7 @@ export function reviewPlan(tasks, mode = 'lean', batchSize = 4) {
 function cmdReviewPlan(args) {
   const { flags, pos } = parseFlags(args);
   validId(pos[0]);
-  const mode = flags.mode || readState(pos[0]).review_mode || 'lean';
+  const mode = flags.mode || readState(pos[0]).review_mode || workflow().review_mode || 'lean';
   out(reviewPlan(loadTasks(pos[0]), mode));
 }
 
@@ -280,9 +377,15 @@ export function guard(phase, id) {
     const meta = rd('.openspec.yaml') || '';
     if (!listSpecs(id).length && !/skip_specs:\s*true/.test(meta)) fails.push('no delta specs (add specs/<capability>/spec.md or set skip_specs: true)');
     const v = openspecValidate(id); if (v) fails.push(v);
+    const caps = workflow().doc_caps;
+    if (prop && prop.split('\n').length > caps.proposal_lines) warns.push(`proposal.md is ${prop.split('\n').length} lines (cap ${caps.proposal_lines}): trim to why + scope + short approach`);
+    for (const r of parseDeltaSpecs(loadDeltaSpecs(id))) if (r.scenarios.length > caps.requirement_scenarios) warns.push(`requirement "${r.name}" has ${r.scenarios.length} scenarios (cap ${caps.requirement_scenarios})`);
   } else if (phase === 'plan') {
+    const wf = workflow();
     const design = rd('design.md');
-    if (!design || design.trim().length < 200) fails.push('design.md missing or too thin (brainstorm output goes here)');
+    if (design && design.trim().length < 120) fails.push('design.md is too thin to be useful: expand it or delete it and keep the approach in proposal.md');
+    if (!design && wf.design === 'always') fails.push('design.md required (workflow design=always)');
+    if (design && design.split('\n').length > wf.doc_caps.design_lines) warns.push(`design.md is ${design.split('\n').length} lines (cap ${wf.doc_caps.design_lines})`);
     if (!rd('tasks.md')) fails.push('tasks.md missing');
     else {
       const tasks = loadTasks(id);
@@ -291,6 +394,8 @@ export function guard(phase, id) {
         if (!t.hasFiles) fails.push(`task ${t.id} lacks a Files: line`);
         if (!t.hasTest) fails.push(`task ${t.id} lacks a Test: line`);
         if (!t.size) warns.push(`task ${t.id} lacks Size: (defaults to standard)`);
+        if (!t.specRefs.length) warns.push(`task ${t.id} lacks a Spec: line (brief cannot excerpt its requirements)`);
+        if (t.lines.length - 1 > wf.doc_caps.task_lines) warns.push(`task ${t.id} has ${t.lines.length - 1} detail lines (cap ${wf.doc_caps.task_lines})`);
       }
     }
   } else if (phase === 'verify') {
@@ -564,6 +669,9 @@ const HELP = `bridge <command>
   review-plan <id> [--mode=lean|risk|every-task]  solo / batched / skipped reviews (default lean)
   guard <open|plan|verify> <id>   scripted phase gate (exit 0 = advance)
   tasks <id>                      list tasks with status/size
+  scenarios <id>                  write the scenario coverage checklist for the final review
+  waves <id>                      open tasks grouped into parallel waves (disjoint Files, Depends)
+  workflow                        effective workflow settings (config/workflow.json + .bridge/config.json)
   upstream-check                  compare upstream.lock.json with GitHub (monthly sync)
   cursor-profile [anthropic|openai|mixed]  show/switch Cursor agent models
   env-keys                        env variable NAMES per .env* file (never values)
@@ -583,6 +691,9 @@ if (isMain) {
     case 'brief': cmdBrief(args); break;
     case 'review-pkg': cmdReviewPkg(args); break;
     case 'review-plan': cmdReviewPlan(args); break;
+    case 'scenarios': cmdScenarios(args); break;
+    case 'waves': cmdWaves(args); break;
+    case 'workflow': out(workflow()); break;
     case 'guard': cmdGuard(args); break;
     case 'tasks': { validId(args[0]); out(loadTasks(args[0]).map(({ id, done, title, size }) => ({ id, done, title, size }))); break; }
     case 'build': cmdBuild(); break;

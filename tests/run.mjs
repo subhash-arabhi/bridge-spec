@@ -175,7 +175,8 @@ test('reviewPlan: complex/high-risk solo, low-risk batched by 4, lean skips mech
   assert.equal(r.reviews, 5);
   assert.deepEqual(reviewPlan(tasks, 'lean').skipped, ['1.1', '1.4']);
   assert.equal(reviewPlan(tasks).mode, 'lean', 'lean is the default');
-  assert.equal(reviewPlan(tasks).reviews, 4);
+  assert.deepEqual(reviewPlan(tasks).batches, [['1.3', '1.5', '1.6', '1.7']]);
+  assert.equal(reviewPlan(tasks).reviews, 3);
   assert.equal(reviewPlan(tasks, 'every-task').reviews, 8);
   assert.equal(reviewPlan(parseTasks('## 1. G\n- [ ] 1.1 add login session check\n  - Size: standard')).solo[0].why, 'risk', 'keyword risk without Risk line');
 });
